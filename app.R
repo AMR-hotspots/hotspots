@@ -87,11 +87,11 @@ date_retrieved <-  format(Sys.time(), '%d %B, %Y')
 date_method_update <- "13-March-2021"
 
 # Citation
-how_to_cite <- paste0('How to cite: Menzies School of Health Research. ', year_updated, '. HOTspots [computer software]. Darwin, Northern Territory. Retrieved from [web address] on ', date_retrieved, '.')
+how_to_cite <- paste0('How to cite: Menzies School of Health Research. ', year_updated, '. HOTspots. Darwin, Northern Territory. Retrieved from https://anti-microbe-res.shinyapps.io/hotspots/ on ', date_retrieved, '.')
 
 # Social media URL and message
 website_url_clean <- "https://www.menzies.edu.au/page/About_Us/Vision_and_Mission/"
-website_message_clean <- "Track Antimicrobial resistance with this new tool from Menzies School of Health"
+website_message_clean <- "Track antimicrobial resistance with this new tool from Menzies School of Health Research"
 
 
 # Other options of things that might be changed
@@ -1552,7 +1552,7 @@ ui <- fluidPage(
              
              
              ## Tab 6 - Drop down menu  ----------------------------------------------------------------
-             navbarMenu(("More information"),
+             navbarMenu(("More Information"),
                         icon = icon("info"),
                         
                         
@@ -1800,7 +1800,7 @@ server <- function(input,output, session){
     # Text
     text = "On this page, select inputs on the left hand side to map resistance.
     
-    To visulise the data further or see more information, select a tab at the top of the page.",
+    To visualise the data further or see more information, select a tab at the top of the page.",
     size = "s", 
     closeOnEsc = TRUE, # close the pop up when the escape key is clicked
     closeOnClickOutside = FALSE, # close the pop up when the screen is clicked
