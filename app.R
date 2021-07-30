@@ -64,13 +64,9 @@ library(stringr)
 # rsconnect::setAccountInfo(name='amr-hotspots', token='ABF240C9E5255DA43194AE490776D2C9', secret='PTvhErdrQ0PXzf3blaYp4U5XTcj2//NW8/pOPaZN')
 # deployApp()
 # deployApp(account = 'amr-hotspots')
-
 # rsconnect::terminateApp("app_name", account = "amr-hotspots")
 
-
-
-
-
+# rsconnect::deployApp(account = 'anti-microbe-res')
 
 ########################### Edit items in this section only ########################################################################
 
