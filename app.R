@@ -1,471 +1,81 @@
-###***********************************###
-### Tracking Antimicrobial Resistance ###
-###***********************************###
-# Project aim: Create a shiny app to map antimicrobial resistance 
-#
+###********************************************###
+### HOTspots: Tracking Antimicrobial Resistance ###
+###********************************************###
 # Author: Alys Young
-#
 # Collaborators: Saras Windecker and Nick Golding
 #
-#
-# Script aim: The shiny app
+# Project aim: Create a shiny app to map antimicrobial resistance 
+# Script aim: Load packages and run shiny app with data visualisations
 
 
+### Set up -----------------------------------------------------------------------------------------------------------------------------------------------
 
-
-
-##***********##
-## 1. Set up ## ------------------------------------------------------------------------------------------------------------------------------
-##***********##
-
-# clear the environment
+# Clear the environment
 # rm(list = ls())
 
-
-
-### Load packages -----------------------------------------------------------------------------------------------------------------------------------------------
-
-if (!require(shiny)) install.packages('shiny')
-if (!require(shinythemes)) install.packages('shinythemes')
-if (!require(rgdal)) install.packages('rgdal')
-if (!require(ggplot2)) install.packages('ggplot2')
-if (!require(dplyr)) install.packages('dplyr')
-if (!require(leaflet)) install.packages('leaflet')
-if (!require(reshape2)) install.packages('reshape2')
-if (!require(shinydashboard)) install.packages('shinydashboard') # for valuebox
-if (!require(shinyWidgets)) install.packages('shinyWidgets')
-if (!require(shinycssloaders)) install.packages('shinycssloaders')
-if (!require(DT)) install.packages('DT')
-if (!require(tidyr)) install.packages('tidyr')
-if (!require(plotly)) install.packages('plotly')
-if (!require(shinyalert)) install.packages('shinyalert')
-# if (!require(rmarkdown)) install.packages('rmarkdown')
-if (!require(lemon)) install.packages('lemon')
-if (!require(stringr)) install.packages('stringr')
-
-library(shiny) # for the shiny app
-library(shinythemes) # for the shiny app
-library(ggplot2) # to make plots
-library(dplyr) # to clean up code and allow piping %>%
-library(leaflet) # for interactive maps
-library(rgdal) # to open shapefiles of areas to map
-library(shinydashboard)
-library(shinyWidgets)
-library(shinycssloaders)
-library(shinyjs)
-library(tidyr) # for data cleaning
-library(plotly) # for making ggplots into interactive plots
-library(shinyalert) # to create the pop up on loading the app
-# library(rmarkdown) # when making a report
-library(lemon)
-library(stringr)
-
-# library(rsconnect)
-# rsconnect::setAccountInfo(name='amr-hotspots', token='ABF240C9E5255DA43194AE490776D2C9', secret='PTvhErdrQ0PXzf3blaYp4U5XTcj2//NW8/pOPaZN')
-# deployApp()
-# deployApp(account = 'amr-hotspots')
-# rsconnect::terminateApp("app_name", account = "amr-hotspots")
-
+# Deploy app
+# if (!require(rsconnect)) install.packages('rsconnect')
 # rsconnect::deployApp(account = 'anti-microbe-res')
 
-########################### Edit items in this section only ########################################################################
 
-
-### Options -----------------------------------------------------------------------------------------------------------------------------------------------------
-
-# Contact email
-contact_email <- "HOTspots@menzies.edu.au" 
-
-# Date the data was last updated
-date_updated <- format(as.Date(substr(file.info("www/data/HOTspots_yearly.csv")$mtime, 0,10)), "%d-%b-%Y")
-year_updated <- substr(file.info("www/data/HOTspots_yearly.csv")$mtime, 0,4)
-
-# Todays date
-date_retrieved <-  format(Sys.time(), '%d %B, %Y')
-
-# Date the methods were updated
-date_method_update <- "13-March-2021"
-
-# Citation
-how_to_cite <- paste0('How to cite: Menzies School of Health Research. ', year_updated, '. HOTspots. Darwin, Northern Territory. Retrieved from https://anti-microbe-res.shinyapps.io/hotspots/ on ', date_retrieved, '.')
-
-# Social media URL and message
-website_url_clean <- "https://www.menzies.edu.au/page/About_Us/Vision_and_Mission/"
-website_message_clean <- "Track antimicrobial resistance with this new tool from Menzies School of Health Research"
-
-
-# Other options of things that might be changed
-
-# Team members
-# Excel file with Name, contact details, bio, name of image
-
-plotly_description <- "The plots are interactive. Hover your mouse over the graph for information. Click and drag to zoom in on an area, and double click to zoom out. Click on items in the plot legend to show or hide them."
-
-
-
-
-########################### Do not edit beyond this point ########################################################################
-
-
-
-
-
-
-
-
-
-
-### Data ----------------------------------------------------------------------------------------------------------------------------
-
-# Consider a timer or a sceduler that will run the datamanipulation script every time the data is updated
-# source("myScript.r", echo = TRUE)
-
-# If the data changes:
-# Need to add more colours to the colour palettes porvided below
-
-# Read in the data
-# Need to make this reactive to update regularly, likely with reactiveFileReader
-hotspot_monthly_data_unclean    <- read.csv("www/data/HOTspots_monthly.csv")
-hotspot_yearly_data_unclean     <- read.csv("www/data/HOTspots_yearly.csv")
-hotspot_yearly_split_unclean    <- read.csv("www/data/HOTspots_yearly_age&sex.csv")
-hotspot_yearly_splitage_unclean <- read.csv("www/data/HOTspots_yearly_age.csv")
-hotspot_yearly_splitsex_unclean <- read.csv("www/data/HOTspots_yearly_sex.csv")
-
-hotspot_monthly_data_unclean$date_dmy <- as.Date(paste("01", hotspot_monthly_data_unclean$month_year), format = "%d %b %y")
-
-
-
-
-### Locations -------------------------------------------------------------------------------------------------------
-
-## Regions
-# Read in shapefile
-SA3 <- rgdal::readOGR("www/data/Australian_regions/Aus_regions.shp")
-
-# select the SA3 for which we have data for currently
-SA3_data <- SA3[SA3$SA3_NAME16 %in% hotspot_yearly_data_unclean$region,] 
-
-# Remove the full shapefile
-rm(SA3)
-
-
-## Cities
-# Read in the csv file
-cities_names <- read.csv("www/data/Australian_regions/Cities.csv")
-
-
-
-
-# Region names change 
-# This must be after the SA3 shapefile which uses the names of the regions to subset the Australian shapefiles
-
-## Change the name of the regions
-data_to_clean <- c("hotspot_monthly_data_unclean", "hotspot_yearly_data_unclean", "hotspot_yearly_split_unclean", "hotspot_yearly_splitage_unclean", "hotspot_yearly_splitsex_unclean")
-data_clean_names <- c("hotspot_monthly_data", "hotspot_yearly_data", "hotspot_yearly_split", "hotspot_yearly_splitage", "hotspot_yearly_splitsex")
-
-for(d in 1:length(data_to_clean)){
-  # Get each dataframe individually and call it data
-  data <- get(data_to_clean[d])
-  
-  # Change the region names to be more descriptive
-  data$region[data$region == "North West"] <- "North Western Queensland"
-  data$region[data$region == "Mid East"] <- "Mid-eastern Western Australia"
-  data$region[data$region == "Mid West"] <- "Mid-western Western Australia"
-  data$region[data$region == "South"] <- "Southern Western Australia"
-  
-  # CHECK HERE
-  # remove VRE - I dont know where this is, comment was from Teresa
-  data <- data[which(data$organism != "VRE"),]
-
-  
-  # Save the changed dataframe back as its name
-  assign(paste0(data_clean_names[d]), data)
-}
-
-#remove the uncleaned data
-rm(hotspot_monthly_data_unclean, hotspot_yearly_data_unclean, hotspot_yearly_split_unclean, hotspot_yearly_splitage_unclean, hotspot_yearly_splitsex_unclean)
-
-
-# set the levels of the age brackets
-# this determines the order of the items in the legend of plots
-hotspot_yearly_splitage$age_group <- as.factor(hotspot_yearly_splitage$age_group)
-age_levels <- c("<NA>", "unknown", "0-5", "6-15", "16-25", "26-40", "41-60", "61-80", "81+")
-hotspot_yearly_splitage$age_group <- factor(hotspot_yearly_splitage$age_group, levels = age_levels)
-
-
-
-
-### Colour palette ------------------------------------------------------------------------------------------------------------------
-hotspot_palette <- list(
-  
-  ## For heat map
-  `heat`  = c(
-    `green`         = "#629c25",
-    `yellow orange` = "#FFF100", 
-    `orangy yellow` = "#FFD100",
-    `orange`        = "#fc8105", 
-    `dark orange`   = "#e34f00",
-    `red`           = "#ff0000",
-    `red2`          = "#db0000",
-    `deep red`      = "#C00004",
-    `dark red`      = "#810000",
-    `almost black`  = "#410000"),
-  
-  ## For heat map - colour-blind friendly
-  `heat_CBfriendly` = c(
-    `teal`          = "#57C4AD",
-    `yellow orange` = "#E6E1BC", 
-    `orangy yellow` = "#E6BD85",
-    `orange`        = "#EDA247", 
-    `dark orange`   = "#ED8047",
-    `red`           = "#DB4325",
-    `red2`          = "#db0000",
-    `deep red`      = "#C00004",
-    `dark red`      = "#810000",
-    `almost black`  = "#410000"),
-  
-  ## For the reigons
-  `regions` = c( 
-    ## QLD
-    'Cairns and Hinterland'        = "#CC6677", # rose
-    'Mackay'                       = "#88CCEE", #cyan 
-    'North Western Queensland'     = "#44AA99", # teal
-    'Torres and Cape'              = "#117733", # green
-    'Townsville'                   = "#DDCC77", # sand
-    #'Outback - South' = "#332288", # indigo
-    #'Central Highlands (Qld)' = "#999933", # olive
-    #'Rockhampton' = "#882255", # wine
-    #'Biloela' = "#AA4499", # purple
-    
-    ## NT
-    # colours lightened
-    'Alice Springs'                 = "#FF8096", # rose
-    'Darwin'                        = "#CCEEFF", # cyan
-    'Gove'                          = "#92EFD3", # teal
-    'Katherine'                     = "#CCDDAA", # green
-    'Tennant Creek'                 = "#FFE57E", # sand FFEC8C
-    
-    ## WA 
-    # colours darkened
-    'Kimberley'                     = "#78343F", # rose
-    'Mid-eastern Western Australia' = "#225555", # cyan 
-    'Mid-western Western Australia' = "#36877A", # teal
-    'Perth'                         = "#225522", # green
-    'Pilbara'                       = "#A59858", # sand
-    'Southern Western Australia'    = "#222255" # indigo
-    
-    ## Overall - grey scale
-    # 'NT overall'  = "#404040", # darkest grey
-    # 'FNQ overall' = "#5e5d5d", # dark grey 
-    # 'WA overall'  = "#757575", #  grey
-    # 'NSW overall'  = "#8a8a8a",
-    # 'ACT overall' = "#9e9e9e", 
-    # 'VIC overall'  = "#b5b5b5" # light grey
-    # 'SA overall' = "#cfcfcf", # lightest grey
-    # 'TAS overall'  = "#242424" # deep deep dark grey
-    
-    ## Overall - coloured
-    # 'FNQ'   = "#44AA99", # teal
-    # 'NT'    = "#332288", # indigo
-    # 'WA'    = "#78343F" # rose
-    
-    ## Other colours availabe to use
-    
-    # colours lightened
-    #'region name' = "#8183E6", # indigo
-    #'region name' = "#C5C86E", # olive
-    #'region name' = "#F488EE", # purple
-    
-    # colours darkened
-    #'region name' = "#2F345B", # indigo
-    #'region name' = "#7B7B29", # olive
-    #'region name' = "#781D4A", # wine
-    #'region name' = "#803273", # purple
-    
-  ),
-  
-  # For the Jurisdictions
-  `jurisdiction` = c( 'FNQ'   = "#44AA99", # teal
-                      'NT'    = "#332288", # indigo
-                      'WA'    = "#78343F", # rose
-                      'Far North Queensland' = "#44AA99", # teal
-                      'Nothern Australia'    = "#332288", # indigo
-                      'Western Australia'    = "#78343F" # rose
-                      #'NSW' = "#225555" #cyan
-                      #'VIC' = "#225522" #green
-                      #'ACT' = "#999933" #olive
-                      #'TAS' = "#A59858" #sand
-                      #''    = "#781D4A", # wine
-                      #''    = "#803273", # purple
-  ), 
-  
-  # For the Jurisdictions
-  `jurisdiction_range` = c( 'FNQ' = "#92EFD3", # teal
-                            'NT'  = "#8183E6", # indigo
-                            'WA'  = "#FF8096"), # rose
-  #'NSW'  = "#CCEEFF" #cyan
-  #'VIC'  = "#CCDDAA" #green
-  #'ACT'  = "#C5C86E" #olive
-  #'TAS'  = "#FFE57E" #sand
-  
-  ## For the onset locations
-  `onset` = c('Overall'   = "#332288" , # indigo
-              'Hospital'  = "#88CCEE", # cyan
-              'Community' = "#44AA99"), # teal
-  
-  ## For the sample types
-  `sample` = c('All'                = "#332288" , # indigo
-               'Blood'              = "#88CCEE", # cyan
-               'Other'              = "#44AA99", # teal
-               'Respiratory'        = "#117733", # green
-               'Skin & soft tissue' = "#A0515E", # rose
-               'Urine'              = "#999933"), #olive
-  
-  ## For the age brackets
-  `age` = c('0-5'     = "#332288" , # indigo
-            '6-15'    = "#88CCEE", # cyan
-            '16-25'   = "#44AA99", # teal
-            '26-40'   = "#117733", # green
-            '41-60'   = "#A0515E", # rose
-            '61-80'   = "#DDCC77", # sand
-            '81+'     = "#999933", # olive
-            'unknown' = "#803273" # purple
-            
-  ), 
-  
-  `year` = c( 
-    `light red`     = "#FFE0E2",
-    `red`           = "#ff0000",
-    `dark red`      = "#810000"),
-  
-  # For the sexes
-  `sex` = c( 'M'    = "#44AA99", # teal
-             'F'  = "#332288", # indigo
-             'Overall' = "#999933",
-             
-             # repeated with the names changed
-             'Male'    = "#44AA99", # teal
-             'Female'  = "#332288", # indigo
-             'Both' = "#999933") # olive
-)
-
-# Change heat colour palette into a gradient
-pal_num <- colorNumeric(hotspot_palette$heat, domain = 0:100)
-pal_num_CBfriendly <- colorNumeric(hotspot_palette$heat_CBfriendly, domain = 0:100)
-
-# Change the year palette into a gradient
-min_year <- min(hotspot_yearly_data$year) 
-max_year <- max(hotspot_yearly_data$year)
-pal_num_year <- colorNumeric(hotspot_palette$year, domain = min_year:max_year)
-
-## To see the colour palletes:
-# Uncomment the lines below and run them, changing $heat to the $name of the colour palette you want to see
-# par(mar=c(0,0,0,0))
-# pie(rep(1, length(hotspot_palette$heat)), col = hotspot_palette$heat)
-# 
-# pie(rep(1, 100), col = pal_num_CBfriendly(1:100))
-#
-# pie(rep(1, length(min_year:max_year)), col = pal_num_year(min_year:max_year))
-
-
-
-# Check all the data categories have a corresponding colour in the palettes
-# if(length(unique(hotspot_monthly_data$region))  != length(hotspot_palette$regions)) print("Check all the regions in the data have a colour in the regions colour palette")
-# if(length(unique(hotspot_monthly_data$onset))  != length(hotspot_palette$onset)) print("Check all the onser locatoins in the data have a colour in the onset colour palette")
-# if(length(unique(hotspot_monthly_data$sample_type))  != length(hotspot_palette$sample)) print("Check all the sample types in the data have a colour in the sample colour palette")
-# if(length(unique(hotspot_yearly_splitage$age))  != length(hotspot_palette$age)) print("Check all the age brackets in the data have a colour in the age colour palette")
-
-
-
-
-### Code modifications ----------------------------------------------------------------------------------
-
-# set the ggplot theme
-# theme_set(
-#   theme_bw() +
-#     theme(text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
-#           legend.position = "top")
-# )
-
-# Make the datatable column names angles
-headerCallback2 <- c(
-  "function(thead, data, start, end, display){",
-  "  var $ths = $(thead).find('th');",
-  "  $ths.css({'vertical-align': 'bottom', 'white-space': 'nowrap'});",
-  "  var betterCells = [];",
-  "  $ths.each(function(){",
-  "    var cell = $(this);",
-  "    var newDiv = $('<div>', {height: 'auto', width: 'auto'});",
-  "    var newInnerDiv = $('<div>', {text: cell.text()});",
-  "    newDiv.css({margin: 'auto'});",
-  "    newInnerDiv.css({",
-  "      transform: 'rotate(200deg)',",
-  "      'writing-mode': 'tb-rl',",
-  "      'white-space': 'nowrap'",
-  "    });",
-  "    newDiv.append(newInnerDiv);",
-  "    betterCells.push(newDiv);",
-  "  });",
-  "  $ths.each(function(i){",
-  "    $(this).html(betterCells[i]);",
-  "  });",
-  "}"
-)
-
-# Change the sharing url and message into the correct format
-# website URL
-website_url <- website_url_clean %>%
-  str_replace_all( ":", "%3A") %>%
-  str_replace_all( "/", "%2F") %>%
-  str_replace_all( " ", "%20")
-# Message
-website_message <- website_message_clean %>%
-  str_replace_all( ":", "%3A") %>%
-  str_replace_all( "/", "%2F") %>%
-  str_replace_all( " ", "%20")
-
-rm(website_url_clean, website_message_clean)
+### Packages -----------------------------------------------------------------------------------------------------------------------------------------------
+
+# Install 
+# if (!require(shiny))           install.versions('shiny', '1.6.0')
+# if (!require(shinythemes))     install.versions('shinythemes', '1.2.0')
+# if (!require(rgdal))           install.versions('rgdal', '1.5-23')
+# if (!require(ggplot2))         install.versions('ggplot2', '3.3.5')
+# if (!require(dplyr))           install.versions('dplyr','1.0.7')
+# if (!require(leaflet))         install.versions('leaflet', '2.0.4.1 ')
+# if (!require(shinydashboard))  install.versions('shinydashboard', '0.7.1')
+# if (!require(shinyWidgets))    install.versions('shinyWidgets', '0.6.0')
+# if (!require(shinycssloaders)) install.versions('shinycssloaders', '1.0.0')
+# if (!require(DT))              install.versions('DT', '0.18')
+# if (!require(tidyr))           install.versions('tidyr', '1.1.3')
+# if (!require(plotly))          install.versions('plotly', '4.9.4.1')
+# if (!require(shinyalert))      install.versions('shinyalert', '2.0.0')
+# if (!require(rmarkdown))       install.versions('rmarkdown', '2.10')
+# if (!require(lemon))           install.versions('lemon', '0.4.5')
+# if (!require(stringr)) install.versions('stringr', '1.4.0')
 
 
 # Suppress summarise info in the dplyr package
 options(dplyr.summarise.inform = FALSE)
 
-
-## create the list of regions by their jurisdiction ***************
-
-# the data
-data <- hotspot_yearly_data
-# empty list that the options will end up in
-regional_lists_by_jur <- c()
-
-# The unique jurisdictions
-j <- unique(data$jurisdiction)
-
-# For loop to create a list of the regions with the jurisdictions as the names
-for(i in 1:length(j)){
-  
-  # the regions
-  reg <- unique(data$region[data$jurisdiction == j[i]])
-  reg_l <- list(sort(reg))
-  
-  # set the names of the lists 
-  if(j[i] == "FNQ"){
-    names(reg_l) <- "Far North Queensland"
-  } else   if(j[i] == "NT"){
-    names(reg_l) <- "Northern Territory"
-  } else   if(j[i] == "WA"){
-    names(reg_l) <- "Western Australia"
-  }
-  
-  # save the list
-  regional_lists_by_jur <- c(regional_lists_by_jur, reg_l )
-}
-rm(data, j, i, reg, reg_l)
+# Load
+library(shiny)           # to create  the shiny app
+library(shinythemes)     # for the theme
+library(ggplot2)         # to make plots
+library(dplyr)           # to clean up code and allow piping %>%
+library(leaflet)         # for interactive maps
+library(rgdal)           # to open shapefiles of areas to map
+library(shinydashboard)  # for valuebox
+library(shinyWidgets)    # for additional widgets 
+library(shinycssloaders) # for the shiny spinning loaders
+library(shinyjs)         # for shiny show and hide
+library(tidyr)           # for data cleaning
+library(plotly)          # for making ggplots into interactive plots
+library(shinyalert)      # to create the pop up on loading the app
+# library(rmarkdown)     # when making a report
+# library(lemon)         # to make the x axis labels show up when ggplots are facetted over multiple rows
+library(stringr)         # string manipulations
 
 
-ls_all <- list("All")
-names(ls_all) <- "All"
-regional_lists_andAll <- c(ls_all, regional_lists_by_jur)
+### Source Code -----------------------------------------------------------------------------------------------------------------------------------------------
+# These scripts are dependent on eachother
+  # e.g. The load_data.R scipt required functions provided in functions.R
+# Therefore, they must be loaded in this order
+
+# The minor parts of the code that will be edited by other users can be found in 3_edit_this.R
+# including the email, dates,
+
+source("1_functions.R")
+source("2_load_data.R")
+source("3_edit_this.R")
+source("4_aesthetics.R")
+source("5_shiny_code.R")
+
+### Finish set up -----------------------------------------------------------------------------------------------------------------------------------------------
 
 
 
@@ -475,29 +85,24 @@ regional_lists_andAll <- c(ls_all, regional_lists_by_jur)
 
 ui <- fluidPage(
   
+  # Load shiny pages
   useShinydashboard(),
   useShinyjs(),
   useShinyalert(),
   
   #options(shiny.sanitize.errors = TRUE), # use this to change error messages to something generic
   tags$head(tags$style(".shiny-output-error{visibility: hidden}")),
-  tags$head(tags$style(".shiny-output-error:after{content: 'An error has occurred. Please ensure all inputs are selected or try different inputs. Contact the website administrators if the error persists.'; visibility: visible}")),
+  tags$head(tags$style(".shiny-output-error:after{content: 'An error has occurred. Please try different inputs on the left hand side. Contact the website administrators on HOTspots@menzies.edu.au if the error persists.'; visibility: visible}")),
+  
+  # Make the 8th object in the navigation bar (the share button) go to the righthand side
+  # If you add more objects to the navigation bar, then you much update this code so that nth-child(8) has the number that the share button is
   
   tags$head(tags$style(HTML("
                            .navbar-nav {float: none !important;}
                            .navbar {font-size: 15px;}
                            .navbar-nav > li:nth-child(8) {float: right;}
                            .small-box {height: 85px; margin-bottom: 0px;}
-                           
-                           .irs-bar { background: none; border-top: none; border-bottom: none;}
-                           .irs-bar-edge {background: none; border: none;}
-                            #microbe_name+ div>.selectize-input{font-style: italic;}
-                            #microbe_name+ div>.selectize-dropdown{font-style: italic;}
-                            #microbe_name_spec+ div>.selectize-input{font-style: italic;}
-                            #microbe_name_spec+ div>.selectize-dropdown{font-style: italic;}
                             "))),
-  
-  #.navbar {font-size: 16px;}
   
   navbarPage(title ="", # title for the title bar, could add the logo or symbols
              id="nav", selected = NULL, collapsible = TRUE, 
@@ -508,18 +113,9 @@ ui <- fluidPage(
              ## Tab 1 - Map --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
              # landing page 
              tabPanel("Map", icon = icon("map"), # Name on the navigation bar
+
+                      summary_boxes,
                       
-                      fluidRow( #class = "header", tags$head(tags$style(".header {height:50px;}")),
-                        #column(2, imageOutput("hotspots_logo", width="100", height="100")),
-                        
-                        column(2, img(src='HOTspots_logo 2.png', align = "left", width = '100%', height = 'auto')), #, width = "250px"
-                        valueBoxOutput("VBox_organism", width = 2), # , width = 2
-                        valueBoxOutput("VBox_antibiotic", width = 2),
-                        valueBoxOutput("VBox_regions", width = 2),
-                        valueBoxOutput("VBox_year", width = 2),
-                        valueBoxOutput("VBox_tests", width = 2)
-                        #
-                      ),
                       br(),
                       
                       # Sidebar layout with input and output definitions
@@ -548,10 +144,8 @@ ui <- fluidPage(
                               inputId  = "isolatetype",
                               label = "Select specimen type:",
                               choices = sort(unique(hotspot_yearly_data$sample_type)),
-                              options = list(
-                                placeholder = 'Please select specimen type',
-                                onInitialize = I('function() { this.setValue(""); }')
-                              )) 
+                              options = start_empty("specimen type")
+                              ) 
                           ),
                           
                           
@@ -567,12 +161,10 @@ ui <- fluidPage(
                             
                             # Select the microbe name
                             selectizeInput(inputId = "microbe_name", 
-                                        label = "Select organism:",
-                                        choices = sort(unique(hotspot_yearly_data$organism)),
-                                        options = list(
-                                          placeholder = 'Please select organism',
-                                          onInitialize = I('function() { this.setValue(""); }')
-                                        )) 
+                                           label = "Select organism:",
+                                           choices = sort(unique(hotspot_yearly_data$organism)),
+                                           options = start_empty("organism")
+                                           ) 
                             
                           ),
                           
@@ -589,10 +181,8 @@ ui <- fluidPage(
                             selectizeInput(inputId = "antibiotic_name",
                                            label = "Select antibiotic:",
                                            choices = sort(unique(hotspot_yearly_data$antimicrobial)),
-                                           options = list(
-                                             placeholder = 'Please select antibiotic',
-                                             onInitialize = I('function() { this.setValue(""); }')
-                                           )) 
+                                           options = start_empty("antibiotic")
+                                           ) 
                             
                           ),
                           
@@ -648,7 +238,7 @@ ui <- fluidPage(
                             # Date of data update
                             p(paste0("Data last updated ", date_updated))
                             
-                          ),
+                          )
                           
                           
                           
@@ -668,15 +258,15 @@ ui <- fluidPage(
                         
                         # Main panel ********************************************************************************************************************
                         mainPanel(
-                          #div(h3(textOutput("map_title"), style= "margin-top: 0; margin-bottom: 0;")),
+                          # Title
                           h4(uiOutput("map_title")),
-                          #br(),
-                          #{margin-top: 0; margin-bottom: 0;}
-                          #h3(textOutput("map_title")),
-                          leafletOutput("leaflet_map", height=600), # plot the leaflet map
+                          
+                          # Map
+                          leafletOutput("leaflet_map", height=600),
+                          
+                          # Citation
                           p(how_to_cite)
-                          # tags$div(id="Citation", 'How to cite: Menzies School of Health Research. HOTspots [computer software]. Darwin, Northern Territory. Retrieved from [inset web address when done]') # TO DO ## update this
-                        ) # close main panel
+                          ) # close main panel
                       ) # close sidebar layout
              ), # close tabPanel
              
@@ -729,18 +319,15 @@ ui <- fluidPage(
                           
                           # When an onset location is selected and the plots are not comparing the isolate types
                           conditionalPanel(
-                            condition = "input.onset_spec != null && input.tab_plot != 'sample type' ",
+                            condition = "input.onset_spec != null && input.tab_plot != 'sample_type' ",
                             
                             # Select the site of the human infection
                             selectizeInput( inputId = "isolatetype_spec",
-                                         label = "Select specimen type:",
-                                         choices = sort(unique(hotspot_yearly_data$sample_type)),
-                                         options = list(
-                                           placeholder = 'Please select specimen type',
-                                           onInitialize = I('function() { this.setValue(""); }')
-                                         )
-                                         )
-
+                                            label = "Select specimen type:",
+                                            choices = sort(unique(hotspot_yearly_data$sample_type)),
+                                            options = start_empty("specimen type")
+                            )
+                            
                           ), # close conditional panel
                           
                           
@@ -749,10 +336,7 @@ ui <- fluidPage(
                                          label = "Select organism:",
                                          choices = sort(unique(hotspot_yearly_data$organism)),
                                          multiple = FALSE,
-                                         options = list(
-                                           placeholder = 'Please select specimen type',
-                                           onInitialize = I('function() { this.setValue(""); }')
-                                         )
+                                         options = start_empty("organism")
                           ), 
                           
                           
@@ -760,16 +344,14 @@ ui <- fluidPage(
                           conditionalPanel(
                             condition = "input.tab_plot != 'antimicrobe' && input.microbe_name_spec != '' ",
                             
-                              
+                            
                             # select an antimicrobe
                             selectizeInput(inputId = "antibiotic_name_spec1",
-                                        label = "Select antibiotic:",
-                                        choices = sort(unique(hotspot_yearly_data$antimicrobial)),
-                                        multiple = FALSE,
-                                        options = list(
-                                          placeholder = 'Please select specimen type',
-                                          onInitialize = I('function() { this.setValue(""); }')
-                                        ))
+                                           label = "Select antibiotic:",
+                                           choices = sort(unique(hotspot_yearly_data$antimicrobial)),
+                                           multiple = FALSE,
+                                           options = start_empty("antibiotic")
+                                           )
                             
                           ),
                           
@@ -784,13 +366,11 @@ ui <- fluidPage(
                             
                             # select 1 or more antimicrobes
                             selectizeInput(inputId = "antibiotic_name_spec2",
-                                        label = "Select multiple antibiotics:",
-                                        choices = sort(unique(hotspot_yearly_data$antimicrobial)),
-                                        multiple = TRUE,
-                                        options = list(
-                                          placeholder = 'Please select specimen type',
-                                          onInitialize = I('function() { this.setValue(""); }')
-                                        ))
+                                           label = "Select multiple antibiotics:",
+                                           choices = sort(unique(hotspot_yearly_data$antimicrobial)),
+                                           multiple = TRUE,
+                                           options = start_empty("antibiotics")
+                                           )
                           ),
                           
                           
@@ -800,13 +380,11 @@ ui <- fluidPage(
                             
                             # select 1 region
                             selectizeInput(inputId = "region_spec1",
-                                        label = "Select region:",
-                                        choices = regional_lists_by_jur,
-                                        multiple = FALSE,
-                                        options = list(
-                                          placeholder = 'Please select specimen type',
-                                          onInitialize = I('function() { this.setValue(""); }')
-                                        ))
+                                           label = "Select region:",
+                                           choices = regional_lists_by_jur,
+                                           multiple = FALSE,
+                                           options = start_empty("regions")
+                                           )
                           ),
                           
                           # ## If the tab is comparing regions, allow 1 or more regions to be selected                          conditionalPanel(
@@ -834,7 +412,7 @@ ui <- fluidPage(
                             conditionalPanel(
                               condition = "input.microbe_name_spec != ''  ",
                               
-                            checkboxInput("compare_reg_AddJur", label = "Add jurisdiction average", value = TRUE)
+                              checkboxInput("compare_reg_AddJur", label = "Add jurisdiction average", value = TRUE)
                             )
                           ),
                           br(),
@@ -854,6 +432,8 @@ ui <- fluidPage(
                                         ticks = FALSE)
                           ),
                           
+                          # A button to load the map
+                          actionButton(inputId  = "load_plot", label = "Load plots"),
                           
                           helpText(plotly_description)
                           
@@ -903,15 +483,10 @@ ui <- fluidPage(
                                                # Title
                                                h4(uiOutput("text_compare_anti")),
                                                
-                                               # optional text
-                                               # p("Note, this graph is best when fewer years are selected."),
-                                               
                                                # plot to compare antimicrobials with a spinner when loading
                                                plotlyOutput("plot_compare_anti") %>% withSpinner(type = 5),
                                                
                                                br(),
-                                               
-                                               
                                                
                                                h4(uiOutput("text_compare_anti2")),
                                                span(uiOutput("text_anti2_warning")), #style = "color:red"
@@ -944,12 +519,12 @@ ui <- fluidPage(
                                                value = "region",
                                                
                                                
-                                               helpText("Click on the regions in the plot legend to show and hide them on the plot."),
                                                
                                                
                                                # Title
                                                h4(uiOutput("text_compare_reg")),
                                                p("The mean antimicrobial resistance for each reigon, grouped by jurisdiction. The coloured bars represent the regions as explained in the legend. The black line is the mean for all the regions in the jurisdiction. This jurisdictional average can be turned on or off using the checkbox on the left."),
+                                               helpText("Click on the regions in the plot legend to show and hide them on the plot."),
                                                
                                                #Plot 
                                                plotlyOutput("plot_compare_reg") %>% withSpinner(type = 5)
@@ -960,7 +535,7 @@ ui <- fluidPage(
                                       
                                       ### * By sample ---------------------------------------------------------------
                                       tabPanel(("By sample"),
-                                               value = "sample type",
+                                               value = "sample_type",
                                                
                                                
                                                helpText("Click on the sample types in the plot legend to show and hide them on the plot."),
@@ -975,14 +550,14 @@ ui <- fluidPage(
                                                br(),
                                                
                                                # Plot of number of isolates
-                                               plotlyOutput("plot_compare_sample_tests", height = 300) %>% withSpinner(type = 5),
+                                               plotlyOutput("plot_compare_sample_tests", height = 300) %>% withSpinner(type = 5)
                                                
                                       ),
                                       
                                       ### * By Healthcare setting ---------------------------------------------------------------
                                       
                                       tabPanel(("By healthcare setting"),
-                                               value="onset",
+                                               value = "onset",
                                                
                                                helpText("Click on the heathcare setting in the plot legend to show and hide them on the plot."),
                                                
@@ -1119,15 +694,14 @@ ui <- fluidPage(
                           conditionalPanel(
                             condition = "input.onset_table != null",
                             
+                          
+                            
                             # Select the site of the human infection
                             selectizeInput(inputId = "isolatetype_table",
                                            label = "Select specimen type:",
                                            choices = sort(unique(hotspot_yearly_data$sample_type)),
-                                           options = list(
-                                             placeholder = 'Please select specimen type',
-                                             onInitialize = I('function() { this.setValue(""); }')
-                                             )
-                                           )
+                                           options = start_empty("specimen type")
+                            )
                           ),
                           
                           conditionalPanel(
@@ -1136,15 +710,11 @@ ui <- fluidPage(
                                            label = "Select region:",
                                            choices = regional_lists_by_jur,
                                            multiple = FALSE,
-                                           options = list(
-                                             placeholder = 'Please select region',
-                                             onInitialize = I('function() { this.setValue(""); }')
-                                           )
-                                           
+                                           options = start_empty("region")
                             )
                           ),
                           
-                          
+                         
                           conditionalPanel(
                             condition = "input.region_table != '' ",
                             
@@ -1160,10 +730,13 @@ ui <- fluidPage(
                                         ticks = FALSE),
                             
                             # A check box to change to colour blind friendly
-                            checkboxInput("load_CB_friendly_antibiogram", "Colour-blind friendly palette", FALSE)
+                            checkboxInput("load_CB_friendly_antibiogram", "Colour-blind friendly palette", FALSE),
                             
-
-                          ),
+                            # A button to load the map
+                            actionButton(inputId  = "load_antibiogram", label = "Load antibiogram")
+                            
+                            
+                          )
                           
                           
                           # 
@@ -1402,7 +975,7 @@ ui <- fluidPage(
                             # Table
                             DT::dataTableOutput("table_data_year"),
                             br(),
-                            br(),
+                            br()
                             
                           ),
                           
@@ -1441,11 +1014,8 @@ ui <- fluidPage(
                       p(how_to_cite),
                       
                       # Logos
-                      fluidRow( 
-                        column(3, img(src='HOTspots_logo 2.png', align = "left", width = '100%', height = 'auto')),
-                        column(2, img(src='Mezies_logo_white.png', align = "left", width = '100%', height = 'auto')), 
-                        column(2, img(src='HotNorth logo.png', align = "left", width = '100%', height = 'auto'))
-                      ) # close fluid row
+                      show_logos
+                      
              ), # close tab panel
              
              
@@ -1465,7 +1035,7 @@ ui <- fluidPage(
                       h3("ResImpact"),
                       
                       # Description
-                      p(tags$a(href="https://aushsi.shinyapps.io/costresistantecoli/", "ResImpact"), ", is an open-access tool based on a validated and transparent model developed as part of the Health and Economic Modelling of Antimicrobial resistance in Australia (HEMAA) project.", tags$a(href="http://www.cre-rhai.org.au/projects/health-economic-modelling-of-antimicrobial-resistance-in-australia---hemaa", "Click here"), "to read about the HEMAA project."),
+                      p(tags$a(href="https://aushsi.shinyapps.io/costresistantecoli/", "ResImpact"), ", is an open-access tool based on a validated and transparent model developed as part of the ", tags$a(href="http://www.cre-rhai.org.au/projects/health-economic-modelling-of-antimicrobial-resistance-in-australia---hemaa", "Health and Economic Modelling of Antimicrobial resistance in Australia (HEMAA) project.")),
                       p("ResImpact was created by Dr Teresa Wozniak and Prof Adrian Barnett using data from Queenland before 2018."),
                       span(p("This page does not use the HOTspots data."), style="color:red"),
                       
@@ -1569,44 +1139,43 @@ ui <- fluidPage(
                                  
                                  br(),
                                  # Logos
-                                 fluidRow( 
-                                   column(3, img(src='HOTspots_logo 2.png', align = "left", width = '100%', height = 'auto')),
-                                   column(2, img(src='Mezies_logo_white.png', align = "left", width = '100%', height = 'auto')), 
-                                   column(2, img(src='HotNorth logo.png', align = "left", width = '100%', height = 'auto'))
-                                 ) # close fluid row
+                                 show_logos
                                  
                         )
-                        # , # close table panel
+                        , # close table panel
                         # 
                         # 
-                        # ### Publications  ----------------------------------------------------------------
-                        # tabPanel(("Publications"), 
-                        #          
-                        #          # Title
-                        #          titlePanel(h1("Relevant publications")),
-                        #          
-                        #          # To add more publications, use the format below
-                        #          #p(tags$a(href="link", "Name")),
-                        #          
-                        #          #p(tags$a(href="https://bmchealthservres.biomedcentral.com/articles/10.1186/s12913-017-2079-5", " Page, et al., 2017."), ". What is a hospital bed day worth? A contingent valuation study of hospital Chief Executive Officers. BMC Health Services Research 2017;17:137."),
-                        #          p(tags$a(href="https://www.nature.com/articles/s41598-020-69312-4", "TM Wozniak, W Cuningham, S Buchanan, et al., (2020)."), "Geospatial epidemiology of Staphylococcus aureus in a tropical setting: an enabling digital surveillance platform. Scientific Reports 10, 13169."),
-                        #          p(tags$a(href="https://academic.oup.com/cid/advance-article/doi/10.1093/cid/ciaa1228/5895480", "X Lee, A Stewardson, L Worth, N Graves, TM Wozniak (2020)."), "Attributable length of stay, mortality risk and costs of bacterial healthcare-associated infections in Australia: a retrospective case-cohort study."),
-                        #          p(tags$a(href="https://peerj.com/articles/9409/", "W Cuningham, et al., (2020)."), "Antimicrobial stewardship in remote primary healthcare across northern Australia. PeerJ, 8."),
-                        #          p(tags$a(href="https://onlinelibrary.wiley.com/doi/full/10.1111/1753-6405.12876", "W Cuningham, et al., (2019)."), "High burden of infectious disease and antibiotic use in early life in Australian Aboriginal communities."),
-                        #          p(tags$a(href="https://www.cambridge.org/core/journals/infection-control-and-hospital-epidemiology/article/abs/health-and-economic-burden-of-antimicrobialresistant-infections-in-australian-hospitals-a-populationbased-model/A51CA4B0F6181C891F0B406823460C30", "TM Wozniak, E Bailey, N Graves (2019)."), "Health and economic burden of antimicrobial-resistant infections in Australian hospitals: a population-based model. Infection Control & Hospital Epi 40(3)320-7."),
-                        #          p(tags$a(href="https://aricjournal.biomedcentral.com/articles/10.1186/s13756-019-0472-z", "TM Wozniak, L Barnsbee, X Lee, R Pacella (2019)."), "Using the best available data to estimate the cost of antimicrobial resistance: a systematic review. Antimicrobial Resistance and Infection Control 8:26."),
-                        #          p(tags$a(href="https://aricjournal.biomedcentral.com/articles/10.1186/s13756-018-0379-0", "TM Wozniak (2018)."), "Estimating the burden of antimicrobial resistance. Antimicrobial Resistance and Infection Control 7: 91."),
-                        #          p(tags$a(href="https://www.sciencedirect.com/science/article/pii/S2468045117302286", "TM Wozniak (2018)."), "Clinical management of drug-resistant bacteria in Australian hospitals: an online survey of doctors' opinions. Infection, Disease & Health 23(1); 41-48."),
-                        #          p(tags$a(href="https://pubmed.ncbi.nlm.nih.gov/30479305/", "TM Wozniak, N Graves, A Barnett (2018)."), "How much do superbugs cost? An evidence-based open- access tool. Infection, Disease & Health 23 (1); 54-56."),
-                        #          p(tags$a(href="https://idhjournal.com/article/S2468-0451(17)30067-6/fulltext", "TM Wozniak, D Paterson, K Halton (2017)."), "Review of the epidemiological data regarding antimicrobial resistance in gram(-) bacteria in Australia. Infection, Disease & Health 22(4); 210-218."),
-                        #          p(tags$a(href="https://www.idhjournal.com.au/article/S2468-0451(16)30192-4/fulltext", "J Cameron, L Hall, TM Wozniak, K Halton (2016)."), "The burden of community onset MRSA in Australia Infection, Disease & Health. 21 (3). 140."),
-                        #          
-                        #          
-                        #          #note, to see the pdf you must be in the browser
-                        #          tags$iframe(style="height:600px; width:100%; scrolling=yes", 
-                        #                      src="EvaluationReport_Goddard_WebsiteUpload.pdf")
-                        #          
-                        # ), # close tab panel
+                        ### Publications  ----------------------------------------------------------------
+                        tabPanel(("Publications"),
+                                 
+                                 # Title
+                                 titlePanel(h1("Relevant publications")),
+                                 
+                                 # To add more publications, use the format below
+                                 #p(tags$a(href="link", "Name")),
+                                 
+                                 publication_list,  
+                                 
+                                 # p(tags$a(href="https://bmchealthservres.biomedcentral.com/articles/10.1186/s12913-017-2079-5", " Page, et al., (2017)."), ". What is a hospital bed day worth? A contingent valuation study of hospital Chief Executive Officers. BMC Health Services Research 2017;17:137."),
+                                 # p(tags$a(href="https://www.nature.com/articles/s41598-020-69312-4", "TM Wozniak, W Cuningham, S Buchanan, et al., (2020)."), "Geospatial epidemiology of Staphylococcus aureus in a tropical setting: an enabling digital surveillance platform. Scientific Reports 10, 13169."),
+                                 # p(tags$a(href="https://academic.oup.com/cid/advance-article/doi/10.1093/cid/ciaa1228/5895480", "X Lee, A Stewardson, L Worth, N Graves, TM Wozniak (2020)."), "Attributable length of stay, mortality risk and costs of bacterial healthcare-associated infections in Australia: a retrospective case-cohort study."),
+                                 # p(tags$a(href="https://peerj.com/articles/9409/", "W Cuningham, et al., (2020)."), "Antimicrobial stewardship in remote primary healthcare across northern Australia. PeerJ, 8."),
+                                 # p(tags$a(href="https://onlinelibrary.wiley.com/doi/full/10.1111/1753-6405.12876", "W Cuningham, et al., (2019)."), "High burden of infectious disease and antibiotic use in early life in Australian Aboriginal communities."),
+                                 # p(tags$a(href="https://www.cambridge.org/core/journals/infection-control-and-hospital-epidemiology/article/abs/health-and-economic-burden-of-antimicrobialresistant-infections-in-australian-hospitals-a-populationbased-model/A51CA4B0F6181C891F0B406823460C30", "TM Wozniak, E Bailey, N Graves (2019)."), "Health and economic burden of antimicrobial-resistant infections in Australian hospitals: a population-based model. Infection Control & Hospital Epi 40(3)320-7."),
+                                 # p(tags$a(href="https://aricjournal.biomedcentral.com/articles/10.1186/s13756-019-0472-z", "TM Wozniak, L Barnsbee, X Lee, R Pacella (2019)."), "Using the best available data to estimate the cost of antimicrobial resistance: a systematic review. Antimicrobial Resistance and Infection Control 8:26."),
+                                 # p(tags$a(href="https://aricjournal.biomedcentral.com/articles/10.1186/s13756-018-0379-0", "TM Wozniak (2018)."), "Estimating the burden of antimicrobial resistance. Antimicrobial Resistance and Infection Control 7: 91."),
+                                 # p(tags$a(href="https://www.sciencedirect.com/science/article/pii/S2468045117302286", "TM Wozniak (2018)."), "Clinical management of drug-resistant bacteria in Australian hospitals: an online survey of doctors' opinions. Infection, Disease & Health 23(1); 41-48."),
+                                 # p(tags$a(href="https://pubmed.ncbi.nlm.nih.gov/30479305/", "TM Wozniak, N Graves, A Barnett (2018)."), "How much do superbugs cost? An evidence-based open- access tool. Infection, Disease & Health 23 (1); 54-56."),
+                                 # p(tags$a(href="https://idhjournal.com/article/S2468-0451(17)30067-6/fulltext", "TM Wozniak, D Paterson, K Halton (2017)."), "Review of the epidemiological data regarding antimicrobial resistance in gram(-) bacteria in Australia. Infection, Disease & Health 22(4); 210-218."),
+                                 # p(tags$a(href="https://www.idhjournal.com.au/article/S2468-0451(16)30192-4/fulltext", "J Cameron, L Hall, TM Wozniak, K Halton (2016)."), "The burden of community onset MRSA in Australia Infection, Disease & Health. 21 (3). 140."),
+                                 # 
+                                 
+                                 #note, to see the pdf you must be in the browser
+                                 tags$iframe(style="height:600px; width:100%; scrolling=yes",
+                                             src="EvaluationReport_Goddard_WebsiteUpload.pdf")
+                                 
+                        )
+                        #, # close tab panel
                         # 
                         # ### News  ----------------------------------------------------------------
                         # tabPanel(("News"), 
@@ -1651,11 +1220,11 @@ ui <- fluidPage(
                                p("teresa.wozniak@menzies.edu.au")),
                         
                         column(4, img(src='Will.png', align = "centre", width = 'auto', height = '250px'),
-                               p("Will Cuningham, Data manager"),
+                               p("Will Cuningham, Data manager")
                                # p("Will is a final-year PhD candidate at the Menzies School of Health Research in Darwin. His research focuses on the burden of bacterial infections in northern Australia, including estimates of the incidence and cost of antibiotic-susceptible and antibiotic-resistant infections in Northern Territory hospitals. Prior to commencing his PhD at Menzies, Will completed his Masters in Epidemiology at the University of Melbourne and worked as a research assistant at The Peter Doherty Institute of Infection and Immunity.")
                         ), 
                         column(4, img(src='Alys.png', align = "centre", width = 'auto', height = '250px'),
-                               p("Alys Young, Research assistant and developer"),
+                               p("Alys Young, Research assistant and developer")
                         ), 
                       ), # close fluid row
                       
@@ -1670,7 +1239,7 @@ ui <- fluidPage(
                         column(4, img(src='Nick.png', align = "centre", width = 'auto', height = '250px'),
                                p("Prof Nick Golding"),
                                p("The University of Melbourne, Curtin University, Telethon Kids Institute")
-                                ), 
+                        ), 
                         column(4, img(src='Saras.png', align = "centre", width = 'auto', height = '250px'),
                                p("Dr Saras Windecker"),
                                p("The University of Melbourne")
@@ -1696,18 +1265,8 @@ ui <- fluidPage(
                       br(),
                       
                       # Logos
-                      fluidRow( 
-                        column(3, img(src='HOTspots_logo 2.png', align = "left", width = '100%', height = 'auto')),
-                        column(2, img(src='Mezies_logo_white.png', align = "left", width = '100%', height = 'auto')), 
-                        column(2, img(src='HotNorth logo.png', align = "left", width = '100%', height = 'auto')),
-                        column(5)
-                      )
+                      show_logos
              ), # close tab panel
-             
-             
-             
-             
-             
              
              
              ## Tab 8 - Share  ----------------------------------------------------------------
@@ -1901,19 +1460,6 @@ server <- function(input,output, session){
   
   
   
-  ## Logos  ***********************************************************************************************************************************************************************************************************************
-  
-  output$hotspots_logo <- renderImage({
-    return(list(
-      src = "www/HOTspots_logo.png",
-      filetype = "image/png",
-      alt = "The HOTspots logo"
-    ))
-  }, deleteFile = FALSE)
-  
-  
-  
-  
   
   
   # Reactive values -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1988,47 +1534,56 @@ server <- function(input,output, session){
   
   
   ## Yearly data ----------------------------------------------------------------------------------------
-  data_yearly_spec <- reactive({
+  # Filtered by organism only - used as the base for all filtering, but also the by sample and healthcare tabs
+  data_yearly_organismonly <- reactive({
+    # Required inputs
+    req(input$microbe_name_spec)
+    # Filter data
+    data <- Data_yearly() %>% filter( organism == input$microbe_name_spec) 
     
+    # print("The organism was changed")
+  })
+  
+  # Filtered by organism, healthcare and onset - used as the base for majority of all filtering (except by and sample and healthcare tab)
+  data_yearly_spec <- reactive({
     # Required inputs
     req(input$microbe_name_spec,  input$isolatetype_spec, input$onset_spec)
-    
     # Filter data
-    data <- Data_yearly() %>%
-      filter(sample_type == input$isolatetype_spec, onset == input$onset_spec, organism ==  input$microbe_name_spec) 
+    data <- data_yearly_organismonly() %>% filter(sample_type == input$isolatetype_spec, onset == input$onset_spec) 
   })
   
   
   ## For bugs
   data_yearly_bug2 <- reactive({
-    
     # Required inputs
     req(input$microbe_name_spec,  input$isolatetype_spec, input$onset_spec, input$antibiotic_name_spec1)
-    
     # Filter data
-    data <- data_yearly_spec() %>%
-      filter(antimicrobial == input$antibiotic_name_spec1)
+    data <- data_yearly_spec() %>% filter(antimicrobial == input$antibiotic_name_spec1)
+  })
+  
+  
+  ## For by antibiotic tab, to filter the regional list
+  data_yearly_bug3 <- reactive({
+    # Required inputs
+    req(input$microbe_name_spec,  input$isolatetype_spec, input$onset_spec, input$antibiotic_name_spec2)
+    # Filter data
+    data <- data_yearly_spec() %>% filter(antimicrobial %in% input$antibiotic_name_spec2)
   })
   
   
   ## For antibiotics
   data_yearly_drug3 <- reactive({
-    
     # Required inputs
     req(input$microbe_name_spec,  input$isolatetype_spec, input$onset_spec, input$antibiotic_name_spec2, input$region_spec1 )
-    
     # Filter data
-    data <- data_yearly_spec() %>%
-      filter(antimicrobial %in% input$antibiotic_name_spec2, region == input$region_spec1)
+    data <- data_yearly_bug3() %>% filter( region == input$region_spec1)
   })
   
   
   ## For jurisdiction
   data_yearly_jur4 <- reactive({
-    
     # Required inputs
     req(input$microbe_name_spec,  input$isolatetype_spec, input$onset_spec, input$antibiotic_name_spec2)
-    
     # Filter data
     data <- data_yearly_spec() %>%
       filter(antimicrobial == input$antibiotic_name_spec1, region == input$region_spec1) %>%
@@ -2058,35 +1613,34 @@ server <- function(input,output, session){
     req(input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1 )
     
     # Filter data
-    data <- Data_yearly() %>%
-      filter(organism ==  input$microbe_name_spec, antimicrobial == input$antibiotic_name_spec1, region == input$region_spec1) # add another filter to be human/animal
+    data <- data_yearly_organismonly() %>%
+      filter(antimicrobial == input$antibiotic_name_spec1, region == input$region_spec1)
   })
   
   
-  ## For sample type
+  ## Compare by sample type
   data_yearly_compsample <- reactive({
     
     # Required inputs
     req(input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1, input$onset_spec)
     
     # Filter data
-    data <- data_yearly_sampleonset() %>%
-      filter(onset ==  input$onset_spec)
+    data <- data_yearly_sampleonset() %>% filter(onset ==  input$onset_spec)
   })
   
   
-  ## For onset
+  ## Compare by onset
   data_yearly_componset <- reactive({
     
     # Required inputs
     req(input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1, input$isolatetype_spec )
     
     # Filter data
-    data <- data_yearly_sampleonset() %>%
-      filter(sample_type ==  input$isolatetype_spec)
+    data <- data_yearly_sampleonset() %>% filter(sample_type ==  input$isolatetype_spec)
   })
   
   
+  ## Compare by sex
   data_sex <- reactive({
     
     data <- hotspot_yearly_splitsex %>%
@@ -2109,6 +1663,13 @@ server <- function(input,output, session){
       select(year, sex, num_of_tests_yearly, percent_resistant_yearly)
     
   })
+  
+  
+  
+  
+  
+  
+  
   
   ## For antibiogram
   
@@ -2154,6 +1715,7 @@ server <- function(input,output, session){
              region = jurisdiction) %>%
       select(-sum_res, -sum_tests)
     
+    
   })
   
   data_jur2 <- reactive({
@@ -2190,13 +1752,11 @@ server <- function(input,output, session){
     
     # Update inputs
     updateSelectizeInput(session, inputId = "antibiotic_name",
-                      label = "Select antibiotic:",
-                      choices = sort(unique(data$antimicrobial)),
-                      options = list(
-                        placeholder = 'Please select antibiotic',
-                        onInitialize = I('function() { this.setValue(""); }')
-                      )) 
-                      
+                         label = "Select antibiotic:",
+                         choices = sort(unique(data$antimicrobial)),
+                         options = start_empty("antibiotic")
+                         ) 
+    
   })
   
   # Upate the years range available
@@ -2243,19 +1803,43 @@ server <- function(input,output, session){
   observe({ 
     
     # Required inputs
-    req(input$isolatetype, input$onset, input$microbe_name)
+    req(input$microbe_name_spec)
+    
+    # updateselectize for antibiotic_name_spec1, based on 3 different conditions and data. # jur and region filtered by organism, isolate and healthcare onset locations # sample filtered by healthcare onset location, organism, # healthcare onset location filtered by ioslate type, organism
+    # by jur and region should use data_yearly_spec
+    # by sample - data_yearly_organismonly filter onset ==  input$onset_spec
+    # by healthcare data_yearly_organismonly filter sample_type ==  input$isolatetype_spec
     
     # Data
-    data <- hotspot_yearly_filter1() # filtered by onset, sample_type, organism
+    # data <- hotspot_yearly_filter1() # filtered by onset, sample_type, organism
+    
+    # if (input$tab_plot == "jurisdiction" | input$tab_plot == "region" ){
+    #   data <- data_yearly_spec() 
+    # } else 
+      
+    if (input$tab_plot == "sample_type"){
+      req(input$onset_spec)
+     data <- data_yearly_organismonly() %>% filter(onset ==  input$onset_spec)
+      # print("The organism was changed on the sample_type tab and filtered by onset location")
+    } else if (input$tab_plot == "onset"){
+      req(input$isolatetype_spec)
+      data <- data_yearly_organismonly() %>% filter(sample_type ==  input$isolatetype_spec)
+      
+      # print("The organism was changed on the onset tab, using the organism tab and filtered by sample type")
+    } else { # if jurisdiction or regions
+      data <- data_yearly_spec()
+      
+      # print("The organism was changed on the jurisdiction or region tab. uses data filtered by isolate, sample and organism")
+    }
+    
+
     
     # Update input
     updateSelectizeInput(session, inputId = "antibiotic_name_spec1",
-                      label = "Select antibiotic:",
-                      choices = sort(unique(data$antimicrobial)), 
-                      options = list(
-                        placeholder = 'Please select specimen type',
-                        onInitialize = I('function() { this.setValue(""); }')
-                      ))
+                         label = "Select antibiotic:",
+                         choices = sort(unique(data$antimicrobial)), 
+                         options = start_empty("antibiotic")
+                         )
   })
   
   
@@ -2264,46 +1848,26 @@ server <- function(input,output, session){
   observe({ 
     
     # Required inputs
-    req(input$antibiotic_name_spec1)
+    # req(input$antibiotic_name_spec1)
     
-    # Data
-    data <- data_yearly_bug2()
+    # regions_lists <- list_reg_by_jur(data_yearly_bug2())
     
-    # empty list that the options will end up in
-    regions_lists <- c()
     
-    # The unique jurisdictions
-    j <- unique(data$jurisdiction)
-    
-    # For loop to create a list of the regions with the jurisdictions as the names
-    for(i in 1:length(j)){
-      
-      # the regions
-      reg <- unique(data$region[data$jurisdiction == j[i]])
-      reg_l <- list(sort(reg))
-      
-      # set the names of the lists 
-      if(j[i] == "FNQ"){
-        names(reg_l) <- "Far North Queensland"
-      } else   if(j[i] == "NT"){
-        names(reg_l) <- "Northern Territory"
-      } else   if(j[i] == "WA"){
-        names(reg_l) <- "Western Australia"
+    if (input$tab_plot == "antimicrobe") {
+      req(input$antibiotic_name_spec2)
+      regions_lists <- list_reg_by_jur(data_yearly_bug3()) # filtered for the multiple drugs
+    } else {
+      req(input$antibiotic_name_spec1)
+      regions_lists <- list_reg_by_jur(data_yearly_bug2())
       }
-      
-      # save the list
-      regions_lists <- c(regions_lists, reg_l )
-    }
-    
+
     # Update
     updateSelectizeInput(session,
                          inputId = "region_spec1",
                          label = "Select region:",
                          choices = regions_lists,
-                         options = list(
-                           placeholder = 'Please select specimen type',
-                           onInitialize = I('function() { this.setValue(""); }')
-                         ))
+                         options = start_empty("region")
+                         )
   })
   
   
@@ -2311,7 +1875,7 @@ server <- function(input,output, session){
   observe({ 
     
     # Required objects
-    req(input$region_spec1, input$antibiotic_name_spec1, )
+    req(input$region_spec1, input$antibiotic_name_spec1)
     
     # Data
     data <- data_yearly_drug3()
@@ -2319,7 +1883,7 @@ server <- function(input,output, session){
     # Update
     updateSliderInput(session, inputId = "year_spec",
                       label = "Select the years:",
-                      value= c(ifelse(length(unique(data$year)) < 6, min(data$year), max(data$year) - 6 ), max(data$year)), # max(data$year) - 4
+                      value = c(ifelse(length(unique(data$year)) < 6, min(data$year), max(data$year) - 6 ), max(data$year)), # max(data$year) - 4
                       min = min(data$year),
                       max = max(data$year))
   })
@@ -2335,43 +1899,49 @@ server <- function(input,output, session){
   # regions
   observe({ 
     
+    
     # Required inputs
-    req(input$onset_table, input$isolatetype_table, )
+    req(input$onset_table, input$isolatetype_table)
     
-    # Data
-    data <- data_antibiogram_prelim()
     
-    # empty list that the options will end up in
-    regions_lists <- c()
     
-    # The unique jurisdictions
-    j <- unique(data$jurisdiction)
+    regions_list_table <- list_reg_by_jur(data_antibiogram_prelim())
     
-    # For loop to create a list of the regions with the jurisdictions as the names
-    for(i in 1:length(j)){
-      
-      # the regions
-      reg <- unique(data$region[data$jurisdiction == j[i]])
-      reg_l <- list(sort(reg))
-      
-      # set the names of the lists 
-      if(j[i] == "FNQ"){
-        names(reg_l) <- "Far North Queensland"
-      } else   if(j[i] == "NT"){
-        names(reg_l) <- "Northern Territory"
-      } else   if(j[i] == "WA"){
-        names(reg_l) <- "Western Australia"
-      }
-      
-      # save the list
-      regions_lists <- c(regions_lists, reg_l )
-    }
+    # 
+    # # Data
+    # data <- data_antibiogram_prelim()
+    # 
+    # # empty list that the options will end up in
+    # regions_list_table <- c()
+    # 
+    # # The unique jurisdictions
+    # j <- unique(data$jurisdiction)
+    # 
+    # # For loop to create a list of the regions with the jurisdictions as the names
+    # for(i in 1:length(j)){
+    #   
+    #   # the regions
+    #   reg <- unique(data$region[data$jurisdiction == j[i]])
+    #   reg_l <- list(sort(reg))
+    #   
+    #   # set the names of the lists 
+    #   if(j[i] == "FNQ"){
+    #     names(reg_l) <- "Far North Queensland"
+    #   } else   if(j[i] == "NT"){
+    #     names(reg_l) <- "Northern Territory"
+    #   } else   if(j[i] == "WA"){
+    #     names(reg_l) <- "Western Australia"
+    #   }
+    #   
+    #   # save the list
+    #   regions_list_table <- c(regions_list_table, reg_l )
+    # }
     
     # Update
     updateSelectInput(session, inputId = "region_table",
                       label = "Select region:",
-                      choices = regions_lists,
-                      selected = regions_lists[[1]][1])
+                      choices = regions_list_table,
+                      selected = regions_list_table[[1]][1])
   })
   
   ## Antibiogram year selector
@@ -2511,12 +2081,12 @@ server <- function(input,output, session){
                       popup = ifelse(is.na(merged_data$per_res_overall),
                                      paste("No data available"),
                                      paste0('<strong>', merged_data$SA3_NAME16, '</strong>',
-                                            '<br/>', '<strong>',"Resistance: ", '</strong>',  round(merged_data$per_res_overall,1), "%",
-                                            '<br/>', '<strong>', "No. of isolates: ", '</strong>', format(merged_data$num_test_overall, big.mark = ",") )),
+                                            '<br/>', '<strong>',"Resistance: ", '</strong>',  round(merged_data$per_res_overall, 1), "%",
+                                            '<br/>', '<strong>', "No. of isolates: ", '</strong>', format(merged_data$num_test_overall, big.mark = ","))),
                       highlight = highlightOptions( weight = 5, 
                                                     color = "black", 
                                                     bringToFront = TRUE))  %>%
-        addMarkers(data=cities_names, ~long, ~lat, popup = ~as.character(name), label = ~as.character(name))  %>% # add the cities
+        addMarkers(data = cities_names, ~long, ~lat, popup = ~as.character(name), label = ~as.character(name))  %>% # add the cities
         addLegend("bottomright", pal = col_palette, values = ~c(0:100),
                   title = "% resistance",
                   opacity = 1)
@@ -2552,6 +2122,10 @@ server <- function(input,output, session){
   # Title 
   output$text_compare_anti <- renderUI({
     
+    
+    input$load_plot
+    
+    isolate({
     # Required input
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec2, input$region_spec1, input$year_spec)
     
@@ -2562,13 +2136,16 @@ server <- function(input,output, session){
     } else if (length(unique(input$year_spec)) == 2) {
       HTML(paste("Resistance of", em(input$microbe_name_spec), "in", input$region_spec1, "between", min(input$year_spec), "and", max(input$year_spec)))
     }
-    
+    })
   })
   
   
   # Plot as dots **********************************************************************************************************************************************
   output$plot_compare_anti <- renderPlotly({
     
+    input$load_plot
+    
+    isolate({
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec2, input$region_spec1, input$year_spec)
     
@@ -2596,30 +2173,31 @@ server <- function(input,output, session){
       g <- ggplotly(p)
       
     } else if(nrow(data) > 0 ){
-    
-    # Plot 
-    p <- ggplot(data) + 
-      geom_point( aes(text = paste0("Year: ", year, "<br>", "Resistance: " , round(percent_resistant_yearly, 2)), x=reorder(antimicrobial, percent_resistant_yearly),  y=percent_resistant_yearly, colour = year)) + # colour factor year.  , size=5
-      coord_flip() +
-      labs(x = NULL, y = "Percentage resistance  (%)", colour = "") + 
-      scale_y_continuous( limits = c(0, max(data$percent_resistant_yearly)),
-        breaks = seq(from = 0, to = 100, by = ifelse(max(data$percent_resistant_yearly)<30,5,10)),
-                         minor_breaks = seq(from = 0, to = 100, by = ifelse(max(data$percent_resistant_yearly)<30,1,5)) ) +
-      scale_colour_manual(values = pal_num_year2(min(input$year_spec):max(input$year_spec)) )+ # Option to change tihs to pal_num_year to compare when the map is changed easier (keeps the year min and max stagnent), but for more obvious comparison use pal_num_year2. pal_num_year(min(input$year_spec):max(input$year_spec))
-      theme_bw() +
-      theme(legend.position = "top"
-            # , # legend on top
-            # text = element_text(size = 15) 
-      ) # larger text size
-    
-    g <- ggplotly(p, tooltip = c("text"))  %>% # try here year
-      layout(hovermode = "y unified",
-             xaxis = list(tickfont = list(size = 15)), 
-             yaxis = list(tickfont = list(size = 15)))
-    
+      
+      # Plot 
+      p <- ggplot(data) + 
+        geom_point( aes(text = paste0("Year: ", year, "<br>", "Resistance: " , round(percent_resistant_yearly, 2)), x=reorder(antimicrobial, percent_resistant_yearly),  y=percent_resistant_yearly, colour = year)) + # colour factor year.  , size=5
+        coord_flip() +
+        labs(x = NULL, y = "Percentage resistance  (%)", colour = "") + 
+        scale_y_continuous( limits = c(0, max(data$percent_resistant_yearly)),
+                            breaks = seq(from = 0, to = 100, by = ifelse(max(data$percent_resistant_yearly)<30,5,10)),
+                            minor_breaks = seq(from = 0, to = 100, by = ifelse(max(data$percent_resistant_yearly)<30,1,5)) ) +
+        scale_colour_manual(values = pal_num_year2(min(input$year_spec):max(input$year_spec)) )+ # Option to change tihs to pal_num_year to compare when the map is changed easier (keeps the year min and max stagnent), but for more obvious comparison use pal_num_year2. pal_num_year(min(input$year_spec):max(input$year_spec))
+        theme_bw() +
+        theme(legend.position = "top"
+              # , # legend on top
+              # text = element_text(size = 15) 
+        ) # larger text size
+      
+      g <- ggplotly(p, tooltip = c("text"))  %>% # try here year
+        layout(hovermode = "y unified",
+               xaxis = list(tickfont = list(size = 15)), 
+               yaxis = list(tickfont = list(size = 15)))
+      
     }
     
     g
+    })
     
   })
   
@@ -2630,17 +2208,27 @@ server <- function(input,output, session){
   #  Title
   output$text_compare_anti2 <- renderUI({
     
+    input$load_plot
+    
+    isolate({
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec2, input$region_spec1, input$year_spec)
     
     # Text
     HTML(paste("Resistance of", em(input$microbe_name_spec), "in", input$region_spec1))
+    })
+    
   })
   
   
   # Warning text
   output$text_anti2_warning <- renderUI({
     
+    
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec2, input$region_spec1, input$year_spec)
     
@@ -2648,11 +2236,11 @@ server <- function(input,output, session){
     data  <- data_yearly_drug3()
     if(min(data$percent_resistant_yearly) == 0){
       HTML("The black line is the jurisdictional average for the region selected. To turn this off or on, select the checkbox on the left. A green dot and no bar indicates the resistance is exactly 0%. The absence of a dot and bar indicates no tests were done for the region selected.")
-      
     } else if (min(data$percent_resistant_yearly) > 0){
-      # say nothing
       HTML("The black line is the jurisdictional average for the region selected. To turn this off or on, select the checkbox on the left. The absence of a green bar indicates no tests were done for that specific year in the region selected.")
-    }
+    } # close if else
+    })
+    
   })
   
   
@@ -2660,6 +2248,11 @@ server <- function(input,output, session){
   # Plot 
   output$plot_compare_anti2 <- renderPlotly({
     
+    
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec2, input$region_spec1, input$year_spec)
     
@@ -2683,55 +2276,47 @@ server <- function(input,output, session){
     
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
-      
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
+      # g <- ggplotly(empty_ggplot)
+      empty_ggplot
       
     } else if(nrow(data) > 0 ){
       
-    # Plot
-    p <- ggplot() + 
-      geom_bar(data = data, aes(x=year,  y = percent_resistant_yearly, text = paste0("Year: ", year, "<br>", "Resistance in region: ", round(percent_resistant_yearly, 2))), stat="identity", position = position_dodge(width=0.7, preserve = 'single'), width = 0.7, fill = "#44AA99") + 
-      geom_point(data = data[data$percent_resistant_yearly == 0,], aes(x = year,  y = percent_resistant_yearly),  size = 2, colour = "#44AA99")  + #
-      labs(x = "Year", y = "Percentage resistance  (%)") +
-      theme_bw() +
-      scale_x_continuous(breaks = seq(min(data$year), max(data$year), by = 1)) +
-      theme(legend.position = "bottom") + # text = element_text(size=15)
-      facet_wrap(antimicrobial~., ncol = 1, scales = "fixed") #shrink = TRUE,
-    #facet_rep_wrap(~antimicrobial, ncol=1, repeat.tick.labels = TRUE)
-    
-    if(input$compare_reg_AddJur == TRUE){
-      q <- p + 
-        geom_point(data = data_jur, aes(x = year,  y = resistance, text = paste("Resistance in jurisdiction:", round(resistance, 2)))) + 
-        geom_line(data = data_jur, aes(x = year,  y = resistance))
+      # Plot
+      p <- ggplot() + 
+        geom_bar(data = data, aes(x=year,  y = percent_resistant_yearly, text = paste0("Year: ", year, "<br>", "Resistance in region: ", round(percent_resistant_yearly, 2))), stat="identity", position = position_dodge(width=0.7, preserve = 'single'), width = 0.7, fill = "#44AA99") + 
+        geom_point(data = data[data$percent_resistant_yearly == 0,], aes(x = year,  y = percent_resistant_yearly),  size = 2.5, colour = "#44AA99")  + #
+        labs(x = "Year", y = "Percentage resistance  (%)") +
+        theme_bw() +
+        scale_x_continuous(breaks = seq(min(data$year), max(data$year), by = 1)) +
+        theme(legend.position = "bottom") + # text = element_text(size=15)
+        facet_wrap(antimicrobial~., ncol = 1, scales = "fixed") #shrink = TRUE,
+      #facet_rep_wrap(~antimicrobial, ncol=1, repeat.tick.labels = TRUE)
       
-    }  else if(input$compare_reg_AddJur == FALSE){
-      q <- p
-    }
-    
-    l_h <- length(unique(data$antimicrobial))
-    # Setting the height
-    h <- ifelse(l_h < 4, 500, l_h*150)
-    #h <- 150 * length(unique(data$antimicrobial))
-    
-    g <- ggplotly(q, dynamicTicks = TRUE,  tooltip =  "text", height = h) %>%
-      layout(hovermode = "x unified", 
-             yaxis = list(standoff = 0.35)
-             # xaxis = list(tickfont = list(size = 15)),
-             # yaxis = list(tickfont = list(size = 15))
-      )
-    
+      if(input$compare_reg_AddJur == TRUE){
+        q <- p + 
+          geom_point(data = data_jur, aes(x = year,  y = resistance, text = paste("Resistance in jurisdiction:", round(resistance, 2)))) + 
+          geom_line(data = data_jur, aes(x = year,  y = resistance))
+        
+      }  else if(input$compare_reg_AddJur == FALSE){
+        q <- p
+      }
+      
+      l_h <- length(unique(data$antimicrobial))
+      # Setting the height
+      h <- ifelse(l_h < 4, 500, l_h*150) # if there are less than 4 antimicrobials select, make the height 500, else make it the number x 150
+      #h <- 150 * length(unique(data$antimicrobial))
+      
+      g <- ggplotly(q, dynamicTicks = TRUE,  tooltip =  "text", height = h) %>%
+        layout(hovermode = "x unified", 
+               yaxis = list(standoff = 0.35)
+               # xaxis = list(tickfont = list(size = 15)),
+               # yaxis = list(tickfont = list(size = 15))
+        )
     }
     
     g
+    })
+    
     
   })
   
@@ -2746,9 +2331,17 @@ server <- function(input,output, session){
   # Title
   output$text_compare_reg <- renderUI({
     
+    
+    input$load_plot
+    
+    isolate({
+    
+    # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1)
     
+    # Text
     HTML(paste("Resistance of", em(input$microbe_name_spec), "to", tolower(input$antibiotic_name_spec1), "by regions"))
+  })
   })
   
   
@@ -2757,6 +2350,11 @@ server <- function(input,output, session){
   # Plot
   output$plot_compare_reg <- renderPlotly({
     
+    
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1)
     
@@ -2776,69 +2374,60 @@ server <- function(input,output, session){
     
     
     if(nrow(data_yearly_spec_data) == 0 ){
-      data <- data.frame()
       
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
+      empty_ggplot
       
     } else if(nrow(data_yearly_spec_data) > 0 ){
       
-    
-    ## Plot
-    # Bar plot for the individual regions
-    # Jurisdictional average over the top
-    
-    p <- ggplot() + 
-      geom_bar(data = data_yearly_spec_data, aes(x = year,  y = percent_resistant_yearly, fill = region, text = paste0("Year: ", year, "<br>", "Region: ", region, "<br>", "Resistance in region:", percent_resistant_yearly)), stat = "identity", position = position_dodge(width = 0.7, preserve = 'single'), width = 0.7) + 
-      theme_bw() +
-      labs(x = "Year", y = "Percentage resistance  (%)", fill = "Regions") + 
-      theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "top") +  #text = element_text(size=15)
-      scale_fill_manual(values = hotspot_palette$regions)  + 
-      scale_y_continuous(limits = c(0, max(data_yearly_spec_data$percent_resistant_yearly))) +
-      scale_x_continuous(breaks = seq(min(data_yearly_spec_data$year), max(data_yearly_spec_data$year), by = 1)) +
-      facet_rep_wrap(~jurisdiction, ncol = 1, repeat.tick.labels = TRUE, labeller = labeller(jurisdiction =  c("FNQ" = "Far North Queensland", "WA" = "Western Australia", "NT" = "Northern Territory"))) 
-    
-    
-    if(input$compare_reg_AddJur == TRUE){
-      p2 <- p + 
-        geom_point(data = data_jur1, aes(x = year,  y = percent_resistant_yearly, text = paste0("Resistance in jurisdiction:", round(percent_resistant_yearly, 2))) ) +
-        geom_line(data = data_jur1, aes(x = year,  y = percent_resistant_yearly) ) 
       
-    }  else if(input$compare_reg_AddJur == FALSE){
-      p2 <- p
-    }
-    
-    
-    # Setting the height
-    if(length(unique(data_yearly_spec_data$jurisdiction)) == 1){
-      h <- 300
-    } else if(length(unique(data_yearly_spec_data$jurisdiction)) == 2){
-      h <- 600
-    } else if(length(unique(data_yearly_spec_data$jurisdiction)) == 3){
-      h <- 900
-    } 
-    
-    ## Ggplotly
-    g <- ggplotly(p2, dynamicTicks = TRUE, tooltip = "text", height = h) %>% # tooltip = c("min_res", "resistance", "max_res"),
-      layout(hovermode = "x unified",
-             xaxis = list(tickfont = list(size = 15),
-                          standoff = 2), 
-             yaxis = list(tickfont = list(size = 15),
-                          standoff = 0.3),
-             legend = list(orientation = "h", y = 1.2, x = 0.1)
-      )
-
+      ## Plot
+      # Bar plot for the individual regions
+      # Jurisdictional average over the top
+      
+      p <- ggplot() + 
+        geom_bar(data = data_yearly_spec_data, aes(x = year,  y = percent_resistant_yearly, fill = region, text = paste0("Year: ", year, "<br>", "Region: ", region, "<br>", "Resistance in region:", percent_resistant_yearly)), stat = "identity", position = position_dodge(width = 0.7, preserve = 'single'), width = 0.7) + 
+        theme_bw() +
+        labs(x = "Year", y = "Percentage resistance  (%)", fill = "Regions") + 
+        theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "top") +  #text = element_text(size=15)
+        scale_fill_manual(values = hotspot_palette$regions)  + 
+        scale_y_continuous(limits = c(0, max(data_yearly_spec_data$percent_resistant_yearly))) +
+        scale_x_continuous(breaks = seq(min(data_yearly_spec_data$year), max(data_yearly_spec_data$year), by = 1)) +
+        facet_rep_wrap(~jurisdiction, ncol = 1, repeat.tick.labels = TRUE, labeller = labeller(jurisdiction =  c("FNQ" = "Far North Queensland", "WA" = "Western Australia", "NT" = "Northern Territory"))) 
+      
+      
+      if(input$compare_reg_AddJur == TRUE){
+        p2 <- p + 
+          geom_point(data = data_jur1, aes(x = year,  y = percent_resistant_yearly, text = paste0("Resistance in jurisdiction:", round(percent_resistant_yearly, 2))) ) +
+          geom_line(data = data_jur1, aes(x = year,  y = percent_resistant_yearly) ) 
+        
+      }  else if(input$compare_reg_AddJur == FALSE){
+        p2 <- p
+      }
+      
+      
+      # Setting the height
+      if(length(unique(data_yearly_spec_data$jurisdiction)) == 1){
+        h <- 300
+      } else if(length(unique(data_yearly_spec_data$jurisdiction)) == 2){
+        h <- 600
+      } else if(length(unique(data_yearly_spec_data$jurisdiction)) == 3){
+        h <- 900
+      } 
+      
+      ## Ggplotly
+      g <- ggplotly(p2, dynamicTicks = TRUE, tooltip = "text", height = h) %>% # tooltip = c("min_res", "resistance", "max_res"),
+        layout(hovermode = "x unified",
+               xaxis = list(tickfont = list(size = 15),
+                            standoff = 2), 
+               yaxis = list(tickfont = list(size = 15),
+                            standoff = 0.3),
+               legend = list(orientation = "h", y = 1.2, x = 0.1)
+        )
+      
     }
     g
-    
+    })
   })
   
   
@@ -2851,17 +2440,24 @@ server <- function(input,output, session){
   # Title
   output$text_compare_jur <- renderUI({
     
-    # required inputs
+    input$load_plot
+    
+    isolate({
+    # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1)
     
     # text
     HTML(paste("Resistance of", em(input$microbe_name_spec), "to", tolower(input$antibiotic_name_spec1), "by jurisdiction"))
-  
     })
+  })
   
   
   # Description of the graph
   output$text_ggplotly <- renderUI({
+    
+    input$load_plot
+    
+    isolate({
     
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1)
@@ -2869,10 +2465,16 @@ server <- function(input,output, session){
     # Text
     HTML(paste("The minimum, mean and maximum resistance for all the regions within the juridictions."))
   })
+  })
+  
   
   
   # Plot with uncertainty
   output$plot_compare_jur_uncertain <- renderPlotly({
+    
+    input$load_plot
+    
+    isolate({
     
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1)
@@ -2886,66 +2488,62 @@ server <- function(input,output, session){
     
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
       
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
+      empty_ggplot
       
     } else if(nrow(data) > 0 ){
-    
-    ## Gglot of the jurisdictional total as a line and and area showing the min and max region for variation
-    p <- ggplot(data = data, aes(x = year) ) +
-      geom_ribbon(aes(ymin = min_res, ymax = max_res, fill = region, text = paste0( "Jurisdiction: ", region)), alpha = 0.2) +
-      geom_point(aes( y = resistance, text =  paste0("Year: ", year, "<br><br>", "Maximum resistance: ", round(max_res,2), "<br>", "Mean resistance: ", round(resistance,2), "<br>", "Minimum resistance: ", round(min_res,2)  ) )) +
-      geom_line(aes( y = resistance)) + 
-      theme_bw() +
-      labs( x = "Year", y = "Percentage resistance  (%)", colour = "region", fill = "region") + 
-      theme(#text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "top") +  #text = element_text(size=15)
-      scale_x_continuous(breaks = seq(min(data$year), max(data$year), by = 1)) +
-      scale_fill_manual(name = "Minimum and maximum resistances", values = hotspot_palette$jurisdiction) +
-      scale_colour_manual(name = "Mean resistance") +
-      facet_rep_wrap(~region, ncol = 1, repeat.tick.labels = TRUE)
-    
-    # Add facetting variable
-    if(length(unique(data$jurisdiction)) > 1){
-      p2 <- p + facet_rep_wrap(~jurisdiction, ncol = 1, repeat.tick.labels = TRUE, labeller = labeller(jurisdiction = c("FNQ" = "Far North Queensland", "WA" = "Western Australia", "NT" = "Northern Territory")))
+      
+      ## Gglot of the jurisdictional total as a line and and area showing the min and max region for variation
+      p <- ggplot(data = data, aes(x = year) ) +
+        geom_ribbon(aes(ymin = min_res, ymax = max_res, fill = region, text = paste0( "Jurisdiction: ", region)), alpha = 0.2) +
+        geom_point(aes( y = resistance, text =  paste0("Year: ", year, "<br><br>", "Maximum resistance: ", round(max_res,2), "<br>", "Mean resistance: ", round(resistance,2), "<br>", "Minimum resistance: ", round(min_res,2)  ) )) +
+        geom_line(aes( y = resistance)) + 
+        theme_bw() +
+        labs( x = "Year", y = "Percentage resistance  (%)", colour = "region", fill = "region") + 
+        theme(#text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "top") +  #text = element_text(size=15)
+        scale_x_continuous(breaks = seq(min(data$year), max(data$year), by = 1)) +
+        scale_fill_manual(name = "Minimum and maximum resistances", values = hotspot_palette$jurisdiction) +
+        scale_colour_manual(name = "Mean resistance") +
+        facet_rep_wrap(~region, ncol = 1, repeat.tick.labels = TRUE)
+      
+      # Add facetting variable
+      if(length(unique(data$jurisdiction)) > 1){
+        p2 <- p + facet_rep_wrap(~jurisdiction, ncol = 1, repeat.tick.labels = TRUE, labeller = labeller(jurisdiction = c("FNQ" = "Far North Queensland", "WA" = "Western Australia", "NT" = "Northern Territory")))
+        
+      } else {
+        p2  <- p
+      }
+      
+      # Setting the height
+      if(length(unique(data$jurisdiction)) == 1){
+        h <- 250
+      } else if(length(unique(data$jurisdiction)) == 2){
+        h <- 500
+      } else if(length(unique(data$jurisdiction)) > 2){
+        h <- 750
+      } 
+      
+      ## Ggplotly
+      g <- ggplotly(p2, tooltip =  "text", height = h) %>% # tooltip = c("min_res", "resistance", "max_res"),
+        layout(hovermode = "x unified",
+               showlegend = FALSE,
+               legend = list( orientation = "h", y = 1.2, x = 0.1)
+        )
+      
+      
+      for(i in 1:length(unique(data$jurisdiction))){
+        g$x$data[[i]]$name <- gsub("\\(","", str_split(  g$x$data[[i]]$name, ",")[[1]][1])
+      }
       
     } else {
-      p2  <- p
-    }
-    
-    # Setting the height
-    if(length(unique(data$jurisdiction)) == 1){
-      h <- 250
-    } else if(length(unique(data$jurisdiction)) == 2){
-      h <- 500
-    } else if(length(unique(data$jurisdiction)) > 2){
-      h <- 750
-    } 
-    
-    ## Ggplotly
-    g <- ggplotly(p2, tooltip =  "text", height = h) %>% # tooltip = c("min_res", "resistance", "max_res"),
-      layout(hovermode = "x unified",
-             showlegend = FALSE,
-             legend = list( orientation = "h", y = 1.2, x = 0.1)
-      )
-    
-    
-    for(i in 1:length(unique(data$jurisdiction))){
-      g$x$data[[i]]$name <- gsub("\\(","", str_split(  g$x$data[[i]]$name, ",")[[1]][1])
-    }
-    
+
+      empty_ggplot
+      
     } # close if else based on the number of data rows
     g
     
+  })
   })
   
   
@@ -2977,65 +2575,73 @@ server <- function(input,output, session){
   # Title
   output$text_compare_sample <- renderUI({
     
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs 
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
     # Text
     HTML(paste("Resistance of", em(input$microbe_name_spec),"to", tolower(input$antibiotic_name_spec1), "in", input$region_spec1, "by sample type"))
   })
+  })
+  
   
   
   # Plot of resistance
   output$plot_compare_sample <- renderPlotly({
     
+    input$load_plot
+    
+    isolate({
+      
     # Data
     data <- data_yearly_compsample()
     
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
+
+      empty_ggplot
       
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
       
     } else if(nrow(data) > 0 ){
       
-    
-    # Plot
-    p <- ggplot( data = data, aes(x = year, y = percent_resistant_yearly) ) +
-      geom_line(aes(colour = sample_type)) + 
-      geom_point(aes(colour = sample_type, text = paste0("Year: ", year, "<br>", "Sample type: ",  sample_type, "<br>", "Resistance: ", round(percent_resistant_yearly, 2), "<br>", "Number of isolates: ", num_of_tests_yearly)), size = 3) +
-      scale_x_continuous(breaks = seq(min(data$year) - 1, max(data$year) + 1, by = 1)) +
-      scale_y_continuous(limits = c(0, max(data$percent_resistant_yearly))) + 
-      scale_colour_manual(values = hotspot_palette$sample) +
-      labs(x = "Year", y = "Percentage resistance  (%)", colour = "") + 
-      theme_bw() + 
-      theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "top")
-    
-    g <- ggplotly(p, tooltip = "text") %>%
-      layout(hovermode = "x unified",
-             legend = list(orientation = "h", y = 100, x = 0.1),
-             xaxis = list(tickfont = list(size = 15)), 
-             yaxis = list(tickfont = list(size = 15))
-      )
+      
+      # Plot
+      p <- ggplot( data = data, aes(x = year, y = percent_resistant_yearly) ) +
+        geom_line(aes(colour = sample_type)) + 
+        geom_point(aes(colour = sample_type, text = paste0("Year: ", year, "<br>", "Sample type: ",  sample_type, "<br>", "Resistance: ", round(percent_resistant_yearly, 2), "<br>", "Number of isolates: ", num_of_tests_yearly)), size = 3) +
+        scale_x_continuous(breaks = seq(min(data$year) - 1, max(data$year) + 1, by = 1)) +
+        scale_y_continuous(limits = c(0, max(data$percent_resistant_yearly))) + 
+        scale_colour_manual(values = hotspot_palette$sample) +
+        labs(x = "Year", y = "Percentage resistance  (%)", colour = "") + 
+        theme_bw() + 
+        theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "top")
+      
+      g <- ggplotly(p, tooltip = "text") %>%
+        layout(hovermode = "x unified",
+               legend = list(orientation = "h", y = 100, x = 0.1),
+               xaxis = list(tickfont = list(size = 15)), 
+               yaxis = list(tickfont = list(size = 15))
+        )
     } # close if else based on number of data rows
     g
     
   })
+  })
+  
   
   
   
   # Plot of test numbers
   output$plot_compare_sample_tests <- renderPlotly({
     
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
@@ -3044,39 +2650,32 @@ server <- function(input,output, session){
     
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
+
+      empty_ggplot
       
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
       
     } else if(nrow(data) > 0 ){
-    
-    # Plot
-    p <- ggplot(data = data, aes(x = year, y = num_of_tests_yearly, fill = sample_type, text = paste0("Year: ", year, "<br>", "Sample type: ",  sample_type, "<br>", "Resistance: ", round(percent_resistant_yearly, 2), "<br>", "Number of isolates: ", num_of_tests_yearly)) ) +
-      geom_bar(stat="identity", position=position_dodge(width=0.7, preserve = 'single'), width=0.7) +
-      scale_fill_manual(values = hotspot_palette$sample) +
-      scale_x_continuous(breaks = seq(min(data$year), max(data$year), by = 1)) +
-      labs(x="Year", y="Number of isolates", fill="") + 
-      theme_bw() + 
-      theme( # text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "top")
-    
-    g <- ggplotly(p, tooltip = "text") %>%
-      layout( # hovermode = "x unified",
-        legend = list(orientation = "h", y = 100, x = 0.1),
-        xaxis = list(tickfont = list(size = 15)), 
-        yaxis = list(tickfont = list(size = 15))
-      )
+      
+      # Plot
+      p <- ggplot(data = data, aes(x = year, y = num_of_tests_yearly, fill = sample_type, text = paste0("Year: ", year, "<br>", "Sample type: ",  sample_type, "<br>", "Resistance: ", round(percent_resistant_yearly, 2), "<br>", "Number of isolates: ", num_of_tests_yearly)) ) +
+        geom_bar(stat="identity", position=position_dodge(width=0.7, preserve = 'single'), width=0.7) +
+        scale_fill_manual(values = hotspot_palette$sample) +
+        scale_x_continuous(breaks = seq(min(data$year), max(data$year), by = 1)) +
+        labs(x="Year", y="Number of isolates", fill="") + 
+        theme_bw() + 
+        theme( # text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "top")
+      
+      g <- ggplotly(p, tooltip = "text") %>%
+        layout( # hovermode = "x unified",
+          legend = list(orientation = "h", y = 100, x = 0.1),
+          xaxis = list(tickfont = list(size = 15)), 
+          yaxis = list(tickfont = list(size = 15))
+        )
     }
     g
     
+  })
   })
   
   
@@ -3092,16 +2691,25 @@ server <- function(input,output, session){
   # Title
   output$text_compare_onset <- renderUI({
     
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs
     req(input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
     # Text
     HTML(paste("Resistance of", em(input$microbe_name_spec), "to", tolower(input$antibiotic_name_spec1), "in", input$region_spec1, "by healthcare setting"))
   })
+  })
+  
   
   
   # Plot of resistance
   output$plot_compare_onset <- renderPlotly({
+    input$load_plot
+    
+    isolate({
     
     # Required inputs
     req(input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
@@ -3113,48 +2721,46 @@ server <- function(input,output, session){
     
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
+
+      empty_ggplot
       
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
       
     } else if(nrow(data) > 0 ){
       
-    # Plot
-    p <- ggplot(data = data, aes(x = year, y = percent_resistant_yearly) ) +
-      geom_line(aes(colour = onset)) + 
-      geom_point(aes(colour = onset, text = paste0("Year: ", year, "<br>", "Healthcare setting: ", onset, "<br>", "Resistance: ", round(percent_resistant_yearly, 2), "<br>", "Number of isolates: ",  num_of_tests_yearly)), size = 3) +
-      scale_colour_manual(values = hotspot_palette$onset) +
-      scale_y_continuous(limits = c(0, max(data$percent_resistant_yearly))) + 
-      scale_x_continuous(breaks = seq(min(data_axis$year) - 1, max(data_axis$year) + 1,  by = 1)) +
-      labs(x = "Year", y = "Percentage resistance  (%)", colour = "") + 
-      theme_bw() + 
-      theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "top")
-    
-    g <- ggplotly(p, tooltip = "text") %>% #, dynamicTicks = TRUE
-      layout(hovermode = "x unified",
-             legend = list(orientation = "h", y = 100, x = 0.1),
-             xaxis = list(tickfont = list(size = 15)), 
-             yaxis = list(tickfont = list(size = 15))
-      )
+      # Plot
+      p <- ggplot(data = data, aes(x = year, y = percent_resistant_yearly) ) +
+        geom_line(aes(colour = onset)) + 
+        geom_point(aes(colour = onset, text = paste0("Year: ", year, "<br>", "Healthcare setting: ", onset, "<br>", "Resistance: ", round(percent_resistant_yearly, 2), "<br>", "Number of isolates: ",  num_of_tests_yearly)), size = 3) +
+        scale_colour_manual(values = hotspot_palette$onset) +
+        scale_y_continuous(limits = c(0, max(data$percent_resistant_yearly))) + 
+        scale_x_continuous(breaks = seq(min(data_axis$year) - 1, max(data_axis$year) + 1,  by = 1)) +
+        labs(x = "Year", y = "Percentage resistance  (%)", colour = "") + 
+        theme_bw() + 
+        theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "top")
+      
+      g <- ggplotly(p, tooltip = "text") %>% #, dynamicTicks = TRUE
+        layout(hovermode = "x unified",
+               legend = list(orientation = "h", y = 100, x = 0.1),
+               xaxis = list(tickfont = list(size = 15)), 
+               yaxis = list(tickfont = list(size = 15))
+        )
     }
     g
     
   })
+  })
+  
   
   
   
   # Plot of number of tests
   output$plot_compare_onset_tests <- renderPlotly({
     
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs
     req(input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
@@ -3162,40 +2768,33 @@ server <- function(input,output, session){
     data <- data_yearly_componset()
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
+
+      empty_ggplot
       
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
       
     } else if(nrow(data) > 0 ){
       
-    
-    # Plot
-    p <- ggplot(data = data, aes(x = year, y = num_of_tests_yearly, fill = onset) ) +
-      geom_bar(aes(text = paste0("Year: ", year, "<br>", "Healthcare setting: ", onset,"<br>", "Number of isolates: ",  num_of_tests_yearly)), stat="identity", position=position_dodge(width=0.7, preserve = 'single'), width=0.7) +
-      scale_fill_manual(values = hotspot_palette$onset) +
-      scale_x_continuous(breaks = seq(min(data$year) - 1, max(data$year) + 1,  by = 1)) +
-      labs(x="Year", y="Number of isolates", fill="") + 
-      theme_bw() + 
-      theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "top")
-    
-    g <- ggplotly(p,  tooltip = "text") %>% #dynamicTicks = TRUE,
-      layout( # hovermode = "x unified",
-        legend = list(orientation = "h", y = 100, x = 0.1),
-        xaxis = list(tickfont = list(size = 15)), 
-        yaxis = list(tickfont = list(size = 15))
-      )
+      
+      # Plot
+      p <- ggplot(data = data, aes(x = year, y = num_of_tests_yearly, fill = onset) ) +
+        geom_bar(aes(text = paste0("Year: ", year, "<br>", "Healthcare setting: ", onset,"<br>", "Number of isolates: ",  num_of_tests_yearly)), stat="identity", position=position_dodge(width=0.7, preserve = 'single'), width=0.7) +
+        scale_fill_manual(values = hotspot_palette$onset) +
+        scale_x_continuous(breaks = seq(min(data$year) - 1, max(data$year) + 1,  by = 1)) +
+        labs(x="Year", y="Number of isolates", fill="") + 
+        theme_bw() + 
+        theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "top")
+      
+      g <- ggplotly(p,  tooltip = "text") %>% #dynamicTicks = TRUE,
+        layout( # hovermode = "x unified",
+          legend = list(orientation = "h", y = 100, x = 0.1),
+          xaxis = list(tickfont = list(size = 15)), 
+          yaxis = list(tickfont = list(size = 15))
+        )
     }
     g
     
+  })
   })
   
   
@@ -3211,16 +2810,25 @@ server <- function(input,output, session){
   
   output$text_age <- renderUI({
     
+    input$load_plot
+    
+    isolate({
+      
     # Required Inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
     # Text 
     HTML(paste("Resistance of", em(input$microbe_name_spec), "to", tolower(input$antibiotic_name_spec1), "in", input$region_spec1, "by age"))
   })
+  })
+  
   
   
   # Warning text
   output$text_age_warning <- renderUI({
+    input$load_plot
+    
+    isolate({
     
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
@@ -3237,11 +2845,15 @@ server <- function(input,output, session){
     HTML(text_warning)
     
   })
+  })
   
   
   
   ## Plot
   output$plot_compare_age <- renderPlotly({
+    input$load_plot
+    
+    isolate({
     
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
@@ -3250,48 +2862,45 @@ server <- function(input,output, session){
     data <- data_age() 
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
-      
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
+
+      empty_ggplot
       
     } else if(nrow(data) > 0 ){
       
-    
-    # the order of age groups isnt working, even on ggplot only 
-    # data$age_group <- factor(data$age_group, levels = age_levels)
-                
-    # ggplot
-    p <- ggplot(data = data, aes(x=year,  y=percent_resistant_yearly, fill = age_group)) + 
-      geom_bar(aes(text = paste0("Year: ", year, "<br>", "Age group: ",  age_group, "<br>", "Resistance: ",  round(percent_resistant_yearly, 2), "<br>", "Number of isolates: ",  num_of_tests_yearly)), stat="identity", position=position_dodge(width=0.7, preserve = 'single'), width=0.7) +
-      theme_bw() +
-      scale_y_continuous(limits = c(0, max(data$percent_resistant_yearly))) + 
-      scale_x_continuous(breaks = seq(min(data$year) - 1, max(data$year) + 1,  by = 1)) +
-      scale_fill_manual(values = hotspot_palette$age) + 
-      labs(x="Year", y="Percentage resistance  (%)", fill="Age Group") + 
-      theme(legend.position = "top") #, text = element_text(size=15)
-    
-    # Plotly
-    g <- ggplotly(p,  tooltip = "text") %>% #text = c("percent_resistant_yearly", "age_group"),
-      layout( # hovermode = "x unified",
-        legend = list(orientation = "h", y = 100, x = 0.1)
-      )
+      # set the levels to try and make the columns plot in order
+      data$age_group <- as.factor(data$age_group)
+      age_levels <- c("<NA>", "unknown", "0-5", "6-15", "16-25", "26-40", "41-60", "61-80", "81+")
+      data$age_group <- factor(data$age_group, levels = age_levels)
+      
+      # ggplot
+      p <- ggplot(data = data, aes(x=year,  y=percent_resistant_yearly, fill = age_group)) + 
+        geom_bar(aes(text = paste0("Year: ", year, "<br>", "Age group: ",  age_group, "<br>", "Resistance: ",  round(percent_resistant_yearly, 2), "<br>", "Number of isolates: ",  num_of_tests_yearly)), stat="identity", position=position_dodge(width=0.7, preserve = 'single'), width=0.7) +
+        theme_bw() +
+        scale_y_continuous(limits = c(0, max(data$percent_resistant_yearly))) + 
+        scale_x_continuous(breaks = seq(min(data$year) - 1, max(data$year) + 1,  by = 1)) +
+        scale_fill_manual(values = hotspot_palette$age) + 
+        labs(x="Year", y="Percentage resistance  (%)", fill="Age Group") + 
+        theme(legend.position = "top") #, text = element_text(size=15)
+      
+      # Plotly
+      g <- ggplotly(p,  tooltip = "text") %>% #text = c("percent_resistant_yearly", "age_group"),
+        layout( # hovermode = "x unified",
+          legend = list(orientation = "h", y = 100, x = 0.1)
+        )
     }
     g
   })
+  })
+  
   
   
   
   # Plot of number of tests
   output$plot_compare_age_tests <- renderPlotly({
     
+    input$load_plot
+    
+    isolate({
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
@@ -3299,39 +2908,32 @@ server <- function(input,output, session){
     data <- data_age()
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
+
+      empty_ggplot
       
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
       
     } else if(nrow(data) > 0 ){
       
-    # Plot
-    p <- ggplot(data = data, aes(x = year, y = num_of_tests_yearly, fill = age_group) ) +
-      geom_bar(aes(text = paste0("Year: ", year, "<br>", "Age group: ",  age_group,  "<br>", "Number of isolates: ",  num_of_tests_yearly)), stat = "identity", position = position_dodge(width = 0.7, preserve = 'single'), width = 0.7) +
-      scale_fill_manual(values = hotspot_palette$age) +
-      scale_x_continuous(breaks = seq(min(data$year) - 1, max(data$year) + 1,  by = 1)) +
-      labs(x="Year", y="Number of isolates", fill="") + 
-      theme_bw() + 
-      theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "top")
-    
-    g <- ggplotly(p,  tooltip = "text") %>% #dynamicTicks = TRUE,
-      layout( # hovermode = "x unified",
-        legend = list(orientation = "h", y = 100, x = 0.1),
-        xaxis = list(tickfont = list(size = 15)), 
-        yaxis = list(tickfont = list(size = 15))
-      )
+      # Plot
+      p <- ggplot(data = data, aes(x = year, y = num_of_tests_yearly, fill = age_group) ) +
+        geom_bar(aes(text = paste0("Year: ", year, "<br>", "Age group: ",  age_group,  "<br>", "Number of isolates: ",  num_of_tests_yearly)), stat = "identity", position = position_dodge(width = 0.7, preserve = 'single'), width = 0.7) +
+        scale_fill_manual(values = hotspot_palette$age) +
+        scale_x_continuous(breaks = seq(min(data$year) - 1, max(data$year) + 1,  by = 1)) +
+        labs(x="Year", y="Number of isolates", fill="") + 
+        theme_bw() + 
+        theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "top")
+      
+      g <- ggplotly(p,  tooltip = "text") %>% #dynamicTicks = TRUE,
+        layout( # hovermode = "x unified",
+          legend = list(orientation = "h", y = 100, x = 0.1),
+          xaxis = list(tickfont = list(size = 15)), 
+          yaxis = list(tickfont = list(size = 15))
+        )
     }
     g
     
+  })
   })
   
   
@@ -3342,17 +2944,27 @@ server <- function(input,output, session){
   # Text
   output$text_sex <- renderUI({
     
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
     # Text
     HTML(paste("Resistance of", em(input$microbe_name_spec), "to", tolower(input$antibiotic_name_spec1), "in", input$region_spec1, "by sex"))
   })
+  })
+  
   
   
   # Plot
   output$plot_compare_sex <- renderPlotly({
     
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
@@ -3368,48 +2980,45 @@ server <- function(input,output, session){
     data <- rbind(data_overall, data_sex)
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
+      empty_ggplot
       
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
       
     } else if(nrow(data) > 0 ){
       
-    
-    # Plot
-    p  <- ggplot(data = data, aes(x = year, y=percent_resistant_yearly, colour = sex)) +
-      geom_point(size=3, aes(text = paste0("Year: ", year, "<br>", "Sex: ", sex, "<br>",  "Resistance: ",  round(percent_resistant_yearly, 2), "<br>",  "Number of isolates: ", num_of_tests_yearly))) +
-      geom_path() +
-      scale_x_continuous(breaks = seq(min(data$year), max(data$year),  by = 1)) +
-      scale_y_continuous(limits = c(0, max(data$percent_resistant_yearly))) + 
-      labs(x = NULL, y = "Percentage resistance (%)", colour = "") +
-      scale_color_manual(values = hotspot_palette$sex, breaks = c("Female", "Male", "Both"), labels = c("Female", "Male", "Both")) + 
-      theme_bw() +
-      theme( #axis.text.x = element_text(angle = 45, hjust = 1),
-        #text = element_text(size=15),
-        legend.position = "top", 
-        legend.spacing.x = unit(1.0, 'cm'))
-    
-    g <- ggplotly(p, tooltip = "text")  %>%
-      layout(hovermode = "x unified",
-             legend = list(orientation = "h", y = 100, x = 0.1))
+      
+      # Plot
+      p  <- ggplot(data = data, aes(x = year, y=percent_resistant_yearly, colour = sex)) +
+        geom_point(size=3, aes(text = paste0("Year: ", year, "<br>", "Sex: ", sex, "<br>",  "Resistance: ",  round(percent_resistant_yearly, 2), "<br>",  "Number of isolates: ", num_of_tests_yearly))) +
+        geom_path() +
+        scale_x_continuous(breaks = seq(min(data$year), max(data$year),  by = 1)) +
+        scale_y_continuous(limits = c(0, max(data$percent_resistant_yearly))) + 
+        labs(x = NULL, y = "Percentage resistance (%)", colour = "") +
+        scale_color_manual(values = hotspot_palette$sex, breaks = c("Female", "Male", "Both"), labels = c("Female", "Male", "Both")) + 
+        theme_bw() +
+        theme( #axis.text.x = element_text(angle = 45, hjust = 1),
+          #text = element_text(size=15),
+          legend.position = "top", 
+          legend.spacing.x = unit(1.0, 'cm'))
+      
+      g <- ggplotly(p, tooltip = "text")  %>%
+        layout(hovermode = "x unified",
+               legend = list(orientation = "h", y = 100, x = 0.1))
     }
     g
     
   })
+  })
+  
   
   
   
   # Plot of number of tests
   output$plot_compare_sex_tests <- renderPlotly({
     
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
@@ -3425,40 +3034,31 @@ server <- function(input,output, session){
     data <- rbind(data_overall, data_sex)
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
-      
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
+      empty_ggplot
       
     } else if(nrow(data) > 0 ){
       
-    
-    # Plot
-    p <- ggplot(data = data, aes(x = year, y = num_of_tests_yearly, fill = sex) ) +
-      geom_bar(aes(text = paste0("Year: ", year, "<br>", "Sex: ", sex, "<br>",  "Number of isolates: ", num_of_tests_yearly)), stat = "identity", position = position_dodge(width = 0.7, preserve = 'single'), width = 0.7) +
-      scale_fill_manual(values = hotspot_palette$sex) +
-      scale_x_continuous(breaks = seq(min(data$year) - 1, max(data$year) + 1,  by = 1)) +
-      labs(x="Year", y="Number of isolates", fill="") + 
-      theme_bw() + 
-      theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
-        legend.position = "top")
-    
-    g <- ggplotly(p,  tooltip = "text") %>% #dynamicTicks = TRUE,
-      layout( # hovermode = "x unified",
-        legend = list(orientation = "h", y = 100, x = 0.1),
-        xaxis = list(tickfont = list(size = 15)), 
-        yaxis = list(tickfont = list(size = 15))
-      )
+      
+      # Plot
+      p <- ggplot(data = data, aes(x = year, y = num_of_tests_yearly, fill = sex) ) +
+        geom_bar(aes(text = paste0("Year: ", year, "<br>", "Sex: ", sex, "<br>",  "Number of isolates: ", num_of_tests_yearly)), stat = "identity", position = position_dodge(width = 0.7, preserve = 'single'), width = 0.7) +
+        scale_fill_manual(values = hotspot_palette$sex) +
+        scale_x_continuous(breaks = seq(min(data$year) - 1, max(data$year) + 1,  by = 1)) +
+        labs(x="Year", y="Number of isolates", fill="") + 
+        theme_bw() + 
+        theme(# text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "top")
+      
+      g <- ggplotly(p,  tooltip = "text") %>% #dynamicTicks = TRUE,
+        layout( # hovermode = "x unified",
+          legend = list(orientation = "h", y = 100, x = 0.1),
+          xaxis = list(tickfont = list(size = 15)), 
+          yaxis = list(tickfont = list(size = 15))
+        )
     }
     g
     
+  })
   })
   
   
@@ -3475,17 +3075,25 @@ server <- function(input,output, session){
   # Title
   output$text_spec <- renderUI({
     
+    input$load_plot
+    
+    isolate({
+      
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
     # Text
     HTML(paste("Resistance of", em(input$microbe_name_spec), "to", tolower(input$antibiotic_name_spec1) , "in", input$region_spec1, "by month"))
   })
+  })
   
   
   # Warning text
   output$text_monthly_low_isolates <- renderUI({
     
+    input$load_plot
+    
+    isolate({
     # Required input
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
@@ -3500,10 +3108,15 @@ server <- function(input,output, session){
     }
     
   })
+  })
   
   
   # Plot of resistance
   output$plot_monthly <- renderPlotly({
+    
+    input$load_plot
+    
+    isolate({
     
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
@@ -3512,42 +3125,35 @@ server <- function(input,output, session){
     data <- data_monthly_spec()
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
+      empty_ggplot
       
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
       
     } else if(nrow(data) > 0 ){
       
-    
-    # Plot
-    p <- ggplot(data = data, aes(x = date_dmy, y = percent_resistant_monthly_raw)) +
-      geom_path() + 
-      geom_point(aes(text = paste0(format(date_dmy, "%B %Y"), "<br>",  "Resistance: ", round(percent_resistant_monthly_raw, 2), "<br>", "Number of isolates: ", num_of_tests_monthly_raw))) +
-      scale_x_date(date_breaks = "6 months", 
-                   date_minor_breaks = "1 month",
-                   date_labels = "%b-%Y") + #6 months when text size  increase
-      scale_y_continuous(limits = c(0, max(data$percent_resistant_monthly_raw))) + 
-      labs(x=NULL, y="Percentage resistance (%)") + 
-      theme_bw() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)
-            # ,
-            # text = element_text(size=15)
-      )
-    
-    
-    g <- ggplotly(p, tooltip = "text")  %>%
-      layout(legend = list(orientation = "h", y = 100, x = 0.1))
+      
+      # Plot
+      p <- ggplot(data = data, aes(x = date_dmy, y = percent_resistant_monthly_raw)) +
+        geom_path() + 
+        geom_point(aes(text = paste0(format(date_dmy, "%B %Y"), "<br>",  "Resistance: ", round(percent_resistant_monthly_raw, 2), "<br>", "Number of isolates: ", num_of_tests_monthly_raw))) +
+        scale_x_date(date_breaks = "6 months", 
+                     date_minor_breaks = "1 month",
+                     date_labels = "%b-%Y") + #6 months when text size  increase
+        scale_y_continuous(limits = c(0, max(data$percent_resistant_monthly_raw))) + 
+        labs(x=NULL, y="Percentage resistance (%)") + 
+        theme_bw() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)
+              # ,
+              # text = element_text(size=15)
+        )
+      
+      
+      g <- ggplotly(p, tooltip = "text")  %>%
+        layout(legend = list(orientation = "h", y = 100, x = 0.1))
     }
     g
   })
+  })
+  
   
   
   
@@ -3556,6 +3162,10 @@ server <- function(input,output, session){
   # Plot of the number of isolates
   output$plot_monthly2 <- renderPlotly({
     
+    input$load_plot
+    
+    isolate({
+    
     # Required inputs
     req(input$onset_spec, input$isolatetype_spec, input$microbe_name_spec, input$antibiotic_name_spec1, input$region_spec1)
     
@@ -3563,39 +3173,32 @@ server <- function(input,output, session){
     data <- data_monthly_spec()
     
     if(nrow(data) == 0 ){
-      data <- data.frame()
+      empty_ggplot
       
-      p <- ggplot(data) + 
-        geom_point() +
-        xlim(2000, 2020) +
-        ylim(0, 100) +
-        theme_classic() +
-        labs(y = "Percentage resistance  (%)", x = "Years") +
-        annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
-      
-      g <- ggplotly(p)
       
     } else if(nrow(data) > 0 ){
       
-    # Plot
-    p <- ggplot(data = data, aes(x = date_dmy )) + #, text = paste0(format(date_dmy, "%B %Y"), "<br>",  "Number of isolates: ", num_of_tests_monthly_raw))
-      geom_bar(aes(y = num_of_tests_monthly_raw, text = paste0(format(date_dmy, "%B %Y"), "<br>", "Number of isolates: ", num_of_tests_monthly_raw)), stat = "identity", fill="lightgrey") +
-      scale_x_date(date_breaks = "6 months",
-                   date_minor_breaks = "1 month",
-                   date_labels = "%b-%Y") + #6 months when text size  increase
-      labs(x=NULL, y="Number of isolates") + # check if this should be colour or color
-      theme_bw() +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1)
-            # ,
-            #text = element_text(size=15)
-      )
-    g <- ggplotly(p, tooltip = "text")
-    
+      # Plot
+      p <- ggplot(data = data, aes(x = date_dmy )) + #, text = paste0(format(date_dmy, "%B %Y"), "<br>",  "Number of isolates: ", num_of_tests_monthly_raw))
+        geom_bar(aes(y = num_of_tests_monthly_raw, text = paste0(format(date_dmy, "%B %Y"), "<br>", "Number of isolates: ", num_of_tests_monthly_raw)), stat = "identity", fill="lightgrey") +
+        scale_x_date(date_breaks = "6 months",
+                     date_minor_breaks = "1 month",
+                     date_labels = "%b-%Y") + #6 months when text size  increase
+        labs(x=NULL, y="Number of isolates") + # check if this should be colour or color
+        theme_bw() +
+        theme(axis.text.x = element_text(angle = 45, hjust = 1)
+              # ,
+              #text = element_text(size=15)
+        )
+      g <- ggplotly(p, tooltip = "text")
+      
     }
     
     g
     
   })
+  })
+  
   
   
   
@@ -3612,10 +3215,50 @@ server <- function(input,output, session){
   
   ## Antibiogram -------------------------------------------------------------------------------------------------------------------------------------------------------------------------
   
+  # Text
+  output$antibiogram_text <- renderText({
+    
+
+    input$load_antibiogram
+    
+    isolate({
+    # Required inputs
+    req( input$isolatetype_table, input$onset_table,  input$region_table, input$range_table)
+    
+    
+    # Text
+    year_text <- "Please select inputs on the left to display the antibiogram"
+    
+    # Change the text based on if 1 or 2 years are selected
+    if ( length(unique(input$range_table)) == 1){
+      year_text <- paste("in", input$range_table)
+    } else if (length(unique(input$range_table)) == 2){
+      year_text <- paste("between", min(input$range_table), "and", max(input$range_table))
+    }
+    
+    # Change the text based on which setting is selected
+    if (is.null(input$onset_table)){
+      paste("Please select inputs on the left to display the antibiogram")
+    } else if(input$onset_table == "Overall") {
+      paste("Percentage susceptible in ", input$region_table, year_text)
+    } else if(input$onset_table == "Community") {
+      paste("Percentage susceptible in the", input$region_table, "community", year_text)
+    } else if(input$onset_table == "Hospital") {
+      paste("Percentage susceptible in the", input$region_table, "hospitals", year_text)
+    }
+    })
+    
+  })
+  
+  
+  
   
   # DT Datatable 
   output$antibiogram_table <- DT::renderDataTable({
     
+    input$load_antibiogram
+    
+    isolate({
     # Required inputs
     req( input$isolatetype_table, input$onset_table,  input$region_table, input$range_table)
     
@@ -3627,28 +3270,39 @@ server <- function(input,output, session){
       select(organism, antimicrobial,  suscept) %>%
       unique()
     
-    # Change the data shape to suit the plot
-    data <- data_antibiogram2 %>%
-      tidyr::spread(organism, suscept) %>%
-      as.data.frame() %>%
-      `rownames<-`(.[,1]) %>% # make the first column into the row names
-      select(-antimicrobial)
+    if(nrow(data_antibiogram2) == 0){ # if the data is empty
+      
+      data_null <- data.frame(None = c("No data available. Please select other inputs."))
+      
+    } else if(nrow(data_antibiogram2) > 0 ){ # if the data is not empty
+      
+      # Change the data shape to suit the plot
+      data <- data_antibiogram2 %>%
+        tidyr::spread(organism, suscept) %>%
+        as.data.frame() %>%
+        `rownames<-`(.[,1]) %>% # make the first column into the row names
+        select(-antimicrobial)
+      
+      
+      # default is *not* for NAs to be displayed
+      # if you do want NAs, use:
+      options(htmlwidgets.TOJSON_ARGS = list(na = 'string'))
+      
+      # Set the colours and the breaks at which to set the colours
+      brks <- seq(10, 100, 10) # values to break.
+      #clrs <- rev(c("#fffeed", pal_num(seq(0,90,10)))) # 11 colours, # turn the heat map into 10 colours
+      
+      # Change the colour palette based on if the colour blind friendly map checkbox is clicked
+      if(input$load_CB_friendly_antibiogram == FALSE){
+        clrs <- rev(c("#fffeed", pal_num(seq(0,90,10)))) # 11 colours, # turn the heat map into 10 colours
+      } else if (input$load_CB_friendly_antibiogram == TRUE){
+        clrs <- rev(c("#fffeed", pal_num_CBfriendly(seq(0,90,10)))) # 11 colours, # turn the heat map into 10 colours
+      }
+      
+    } # close if else  based on empty data
     
     
-    # default is *not* for NAs to be displayed
-    # if you do want NAs, use:
-    options(htmlwidgets.TOJSON_ARGS = list(na = 'string'))
     
-    # Set the colours and the breaks at which to set the colours
-    brks <- seq(10, 100, 10) # values to break.
-    clrs <- rev(c("#fffeed", pal_num(seq(0,90,10)))) # 11 colours, # turn the heat map into 10 colours
-    
-    # Change the colour palette based on if the colour blind friendly map checkbox is clicked
-    if(input$load_CB_friendly_antibiogram == FALSE){
-      clrs <- rev(c("#fffeed", pal_num(seq(0,90,10)))) # 11 colours, # turn the heat map into 10 colours
-    } else if (input$load_CB_friendly_antibiogram == TRUE){
-      clrs <- rev(c("#fffeed", pal_num_CBfriendly(seq(0,90,10)))) # 11 colours, # turn the heat map into 10 colours
-    }
     
     # How long to start the table
     page_Length <- nrow(data) # set as all the data
@@ -3674,42 +3328,12 @@ server <- function(input,output, session){
     # Option of displaying percentage in each cell, add:
     # %>% formatPercentage(names(data), number of decimal places)  # at the end
     
-    return(dat)
+    
+    
+    dat
     
   })
-  
-  
-  
-  # Text
-  output$antibiogram_text <- renderText({
-    
-    # Text
-    year_text <- "Please select inputs on the left to display the antibiogram"
-    
-    # Change the text based on if 1 or 2 years are selected
-    if ( length(unique(input$range_table)) == 1){
-      year_text <- paste("in", input$range_table)
-    } else if (length(unique(input$range_table)) == 2){
-      year_text <- paste("between", input$range_table[1], "and", input$range_table[2])
-    }
-    
-    # Change the text based on which setting is selected
-    if (is.null(input$onset_table)){
-      paste("Please select inputs on the left to display the antibiogram")
-    } else if(input$onset_table == "Overall") {
-      paste("Percentage susceptible in ", input$region_table, year_text)
-    } else if(input$onset_table == "Community") {
-      paste("Percentage susceptible in the", input$region_table, "community", year_text)
-    } else if(input$onset_table == "Hospital") {
-      paste("Percentage susceptible in the", input$region_table, "hospitals", year_text)
-    }
   })
-  
-  
-  
-  
-  
-  
   
   
   
