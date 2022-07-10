@@ -1,6 +1,6 @@
-###********************************************###
+###*********************************************###
 ### HOTspots: Tracking Antimicrobial Resistance ###
-###********************************************###
+###*********************************************###
 # Author: Alys Young
 # Collaborators: Saras Windecker and Nick Golding
 #
@@ -48,7 +48,7 @@ library(shinythemes)     # for the theme
 library(ggplot2)         # to make plots
 library(dplyr)           # to clean up code and allow piping %>%
 library(leaflet)         # for interactive maps
-library(rgdal)           # to open shapefiles of areas to map
+#library(rgdal)           # to open shapefiles of areas to map
 library(shinydashboard)  # for valuebox
 library(shinyWidgets)    # for additional widgets 
 library(shinycssloaders) # for the shiny spinning loaders
@@ -57,7 +57,7 @@ library(tidyr)           # for data cleaning
 library(plotly)          # for making ggplots into interactive plots
 library(shinyalert)      # to create the pop up on loading the app
 # library(rmarkdown)     # when making a report
-# library(lemon)         # to make the x axis labels show up when ggplots are facetted over multiple rows
+library(lemon)         # to make the x axis labels show up when ggplots are facetted over multiple rows
 library(stringr)         # string manipulations
 
 
@@ -71,7 +71,7 @@ library(stringr)         # string manipulations
 
 source("1_functions.R")
 source("2_load_data.R")
-source("3_edit_this.R")
+source("3_optional_edits.R")
 source("4_aesthetics.R")
 source("5_shiny_code.R")
 
@@ -96,13 +96,20 @@ ui <- fluidPage(
   
   # Make the 8th object in the navigation bar (the share button) go to the righthand side
   # If you add more objects to the navigation bar, then you much update this code so that nth-child(8) has the number that the share button is
-  
+  # Make the microbe names be in italics
   tags$head(tags$style(HTML("
                            .navbar-nav {float: none !important;}
                            .navbar {font-size: 15px;}
                            .navbar-nav > li:nth-child(8) {float: right;}
                            .small-box {height: 85px; margin-bottom: 0px;}
-                            "))),
+                           
+                            #microbe_name+ div>.selectize-input{font-style: italic;}
+                            #microbe_name+ div>.selectize-dropdown{font-style: italic;}
+                            #microbe_name_spec+ div>.selectize-input{font-style: italic;}
+                            #microbe_name_spec+ div>.selectize-dropdown{font-style: italic;}
+                            #microbe_name_filt+ div>.selectize-input{font-style: italic;}
+                            #microbe_name_filt+ div>.selectize-dropdown{font-style: italic;}
+                           "))),
   
   navbarPage(title ="", # title for the title bar, could add the logo or symbols
              id="nav", selected = NULL, collapsible = TRUE, 
@@ -509,7 +516,7 @@ ui <- fluidPage(
                                                #plotlyOutput("plot_compare_jur") %>% withSpinner(type = 5),
                                                
                                                # Plotly output comparing the jurisdictions with uncertainty
-                                               plotlyOutput("plot_compare_jur_uncertain") %>% withSpinner(type = 5)
+                                               plotlyOutput("plot_compare_jur_uncertain", height = 600) %>% withSpinner(type = 5)
                                                
                                       ),
                                       
@@ -527,7 +534,7 @@ ui <- fluidPage(
                                                helpText("Click on the regions in the plot legend to show and hide them on the plot."),
                                                
                                                #Plot 
-                                               plotlyOutput("plot_compare_reg") %>% withSpinner(type = 5)
+                                               plotlyOutput("plot_compare_reg", height = 600) %>% withSpinner(type = 5)
                                                
                                       ),
                                       
@@ -694,8 +701,6 @@ ui <- fluidPage(
                           conditionalPanel(
                             condition = "input.onset_table != null",
                             
-                          
-                            
                             # Select the site of the human infection
                             selectizeInput(inputId = "isolatetype_table",
                                            label = "Select specimen type:",
@@ -703,9 +708,10 @@ ui <- fluidPage(
                                            options = start_empty("specimen type")
                             )
                           ),
-                          
                           conditionalPanel(
                             condition = "input.isolatetype_table != '' ",
+                            
+                            # select 1 region
                             selectizeInput(inputId = "region_table",
                                            label = "Select region:",
                                            choices = regional_lists_by_jur,
@@ -713,6 +719,7 @@ ui <- fluidPage(
                                            options = start_empty("region")
                             )
                           ),
+                          
                           
                          
                           conditionalPanel(
@@ -1134,8 +1141,8 @@ ui <- fluidPage(
                                  # Title
                                  titlePanel(h1("Links to the therapeutic guidelines")),
                                  br(),
-                                 tags$div("The", tags$a(href="https://www.tg.org.au", "Therapeutic Guidelines website"), ", and the", tags$a(href="https://tgldcdp.tg.org.au/fulltext/tglcontent/quicklinks/GPSummary_v11.pdf", "pdf")),
-                                 tags$div("The", tags$a(href="https://www.carpa.com.au", "Central Australia Rural Practioners Association (CARPA) website"), ", and the", tags$a(href="https://healthinfonet.ecu.edu.au/healthinfonet/getContent.php?linkid=592687&title=CARPA+standard+treatment+manual%3A+a+clinic+manual+for+primary+health+care+practitioners+in+remote+and+Indigenous+health+services+in+central+and+northern+Australia", "treatment manual pdf")),
+                                 tags$div("The", tags$a(href="https://www.tg.org.au", "Therapeutic Guidelines website"), ", and the", tags$a(href="https://tgldcdp.tg.org.au/fulltext/tglcontent/quicklinks/GPSummary_v11.pdf", "pdf"), "."),
+                                 tags$div("The", tags$a(href="https://www.carpa.com.au", "Central Australia Rural Practioners Association (CARPA) website"), ", and the", tags$a(href="https://healthinfonet.ecu.edu.au/healthinfonet/getContent.php?linkid=592687&title=CARPA+standard+treatment+manual%3A+a+clinic+manual+for+primary+health+care+practitioners+in+remote+and+Indigenous+health+services+in+central+and+northern+Australia", "treatment manual pdf"), "."),
                                  
                                  br(),
                                  # Logos
@@ -1214,17 +1221,17 @@ ui <- fluidPage(
                         #        p("optional contact details"),
                         #        p("Title Name blurb")),
                         # 
-                        column(4, img(src='Teresa.png', align = "center", width = 'auto', height = '250px'),
+                        column(4, img(src = 'Teresa.png', align = "center", width = 'auto', height = '250px'),
                                p("Dr Teresa Wozniak, Program lead"),
                                # p("Dr Teresa Wozniak is an APPRISE Research Fellow and a Research Fellow at the Menzies School of Health Research. Her research interests are in surveillance systems to inform infection prevention and control efforts and support the development of local and national treatment guidelines in northern Australia."),
                                p("teresa.wozniak@menzies.edu.au")),
                         
-                        column(4, img(src='Will.png', align = "centre", width = 'auto', height = '250px'),
-                               p("Will Cuningham, Data manager")
+                        column(4, img(src = 'Will.png', align = "centre", width = 'auto', height = '250px'),
+                               p("Will Cuningham, Data manager and PhD candidate")
                                # p("Will is a final-year PhD candidate at the Menzies School of Health Research in Darwin. His research focuses on the burden of bacterial infections in northern Australia, including estimates of the incidence and cost of antibiotic-susceptible and antibiotic-resistant infections in Northern Territory hospitals. Prior to commencing his PhD at Menzies, Will completed his Masters in Epidemiology at the University of Melbourne and worked as a research assistant at The Peter Doherty Institute of Infection and Immunity.")
                         ), 
-                        column(4, img(src='Alys.png', align = "centre", width = 'auto', height = '250px'),
-                               p("Alys Young, Research assistant and developer")
+                        column(4, img(src = 'Alys.png', align = "centre", width = 'auto', height = '250px'),
+                               p("Alys Young, Research assistant and PhD candidate")
                         ), 
                       ), # close fluid row
                       
@@ -1233,38 +1240,33 @@ ui <- fluidPage(
                       
                       h3("Collaborators"),
                       fluidRow( 
-                        column(4, img(src='UniMelb.png', align = "center", width = 'auto', height = '250px')
+                        column(4, img(src = 'UniMelb.png', align = "center", width = 'auto', height = '250px')
                         ),
                         
-                        column(4, img(src='Nick.png', align = "centre", width = 'auto', height = '250px'),
+                        column(4, img(src = 'Nick.png', align = "centre", width = 'auto', height = '250px'),
                                p("Prof Nick Golding"),
                                p("The University of Melbourne, Curtin University, Telethon Kids Institute")
                         ), 
-                        column(4, img(src='Saras.png', align = "centre", width = 'auto', height = '250px'),
+                        column(4, img(src = 'Saras.png', align = "centre", width = 'auto', height = '250px'),
                                p("Dr Saras Windecker"),
                                p("The University of Melbourne")
                         )
                       ),
-                      
                       br(),
                       br(),
                       
                       # Title
                       h3("Contact the HOTspots team"),
-                      br(),
-                      
-                      # Text
                       p("For general information regarding the data, use of the HOTspots tool and suggestions of further aspects to implement,"),
                       p("please contact Teresa Wozniak from the Menzie's School of Health Research on teresa.wozniak@menzies.edu.au"),
-                      
-                      br(),
                       p("For specific questions regarding the website or to report an issue,"),
                       p(paste("please email", contact_email)),
-                      
                       br(),
                       br(),
                       
                       # Logos
+                      h3("Funding"),
+                      p("The HOTspots platform was developed by the Improving Health Outcomes in the Tropical North (HOT North) program. The HOT North program is supported by the Australian National Health and Medical Research Council (grant number 1131932)."),
                       show_logos
              ), # close tab panel
              
@@ -1364,7 +1366,7 @@ server <- function(input,output, session){
     closeOnEsc = TRUE, # close the pop up when the escape key is clicked
     closeOnClickOutside = FALSE, # close the pop up when the screen is clicked
     html = FALSE,
-    type = "info", # the icon at te top
+    type = "", # use "info" for the icon at te top
     showConfirmButton = TRUE,
     showCancelButton = FALSE,
     confirmButtonText = "OK",
@@ -1899,49 +1901,18 @@ server <- function(input,output, session){
   # regions
   observe({ 
     
-    
     # Required inputs
     req(input$onset_table, input$isolatetype_table)
     
     
-    
     regions_list_table <- list_reg_by_jur(data_antibiogram_prelim())
     
-    # 
-    # # Data
-    # data <- data_antibiogram_prelim()
-    # 
-    # # empty list that the options will end up in
-    # regions_list_table <- c()
-    # 
-    # # The unique jurisdictions
-    # j <- unique(data$jurisdiction)
-    # 
-    # # For loop to create a list of the regions with the jurisdictions as the names
-    # for(i in 1:length(j)){
-    #   
-    #   # the regions
-    #   reg <- unique(data$region[data$jurisdiction == j[i]])
-    #   reg_l <- list(sort(reg))
-    #   
-    #   # set the names of the lists 
-    #   if(j[i] == "FNQ"){
-    #     names(reg_l) <- "Far North Queensland"
-    #   } else   if(j[i] == "NT"){
-    #     names(reg_l) <- "Northern Territory"
-    #   } else   if(j[i] == "WA"){
-    #     names(reg_l) <- "Western Australia"
-    #   }
-    #   
-    #   # save the list
-    #   regions_list_table <- c(regions_list_table, reg_l )
-    # }
-    
     # Update
-    updateSelectInput(session, inputId = "region_table",
-                      label = "Select region:",
-                      choices = regions_list_table,
-                      selected = regions_list_table[[1]][1])
+    updateSelectizeInput(session, inputId = "region_table",
+                         label = "Select region:",
+                         choices = regions_list_table,
+                         options = start_empty("region")
+                         )
   })
   
   ## Antibiogram year selector
@@ -2007,9 +1978,8 @@ server <- function(input,output, session){
   ## A blank map to start
   output$leaflet_map <- renderLeaflet({
     
-    # The map
     leaflet() %>% # create a leaflet map
-      fitBounds(lng1 = summary(SA3_data)$bbox[1], lat1 = summary(SA3_data)$bbox[2], lng2 = summary(SA3_data)$bbox[3], lat2 = summary(SA3_data)$bbox[4]) %>% # the starting position of the map
+      fitBounds(lng1 = 114.303954, lat1 = -32.801883, lng2 = 150.441990, lat2 =  -9.142143) %>% # the starting position of the map
       addTiles(options = providerTileOptions(minZoom = 2)) # The background map
     
   })
@@ -2276,8 +2246,8 @@ server <- function(input,output, session){
     
     
     if(nrow(data) == 0 ){
-      # g <- ggplotly(empty_ggplot)
-      empty_ggplot
+      g <- empty_ggplotly
+     
       
     } else if(nrow(data) > 0 ){
       
@@ -2375,7 +2345,7 @@ server <- function(input,output, session){
     
     if(nrow(data_yearly_spec_data) == 0 ){
       
-      empty_ggplot
+      g <- empty_ggplotly
       
     } else if(nrow(data_yearly_spec_data) > 0 ){
       
@@ -2394,7 +2364,6 @@ server <- function(input,output, session){
         scale_y_continuous(limits = c(0, max(data_yearly_spec_data$percent_resistant_yearly))) +
         scale_x_continuous(breaks = seq(min(data_yearly_spec_data$year), max(data_yearly_spec_data$year), by = 1)) +
         facet_rep_wrap(~jurisdiction, ncol = 1, repeat.tick.labels = TRUE, labeller = labeller(jurisdiction =  c("FNQ" = "Far North Queensland", "WA" = "Western Australia", "NT" = "Northern Territory"))) 
-      
       
       if(input$compare_reg_AddJur == TRUE){
         p2 <- p + 
@@ -2489,7 +2458,7 @@ server <- function(input,output, session){
     
     if(nrow(data) == 0 ){
       
-      empty_ggplot
+      g <- empty_ggplotly
       
     } else if(nrow(data) > 0 ){
       
@@ -2538,7 +2507,7 @@ server <- function(input,output, session){
       
     } else {
 
-      empty_ggplot
+      g <- empty_ggplotly
       
     } # close if else based on the number of data rows
     g
@@ -2602,7 +2571,7 @@ server <- function(input,output, session){
     
     if(nrow(data) == 0 ){
 
-      empty_ggplot
+      g <- empty_ggplotly
       
       
     } else if(nrow(data) > 0 ){
@@ -2651,7 +2620,7 @@ server <- function(input,output, session){
     
     if(nrow(data) == 0 ){
 
-      empty_ggplot
+      g <- empty_ggplotly
       
       
     } else if(nrow(data) > 0 ){
@@ -2722,7 +2691,7 @@ server <- function(input,output, session){
     
     if(nrow(data) == 0 ){
 
-      empty_ggplot
+      g <- empty_ggplotly
       
       
     } else if(nrow(data) > 0 ){
@@ -2769,7 +2738,7 @@ server <- function(input,output, session){
     
     if(nrow(data) == 0 ){
 
-      empty_ggplot
+      g <- empty_ggplotly
       
       
     } else if(nrow(data) > 0 ){
@@ -2863,7 +2832,7 @@ server <- function(input,output, session){
     
     if(nrow(data) == 0 ){
 
-      empty_ggplot
+      g <- empty_ggplotly
       
     } else if(nrow(data) > 0 ){
       
@@ -2909,7 +2878,7 @@ server <- function(input,output, session){
     
     if(nrow(data) == 0 ){
 
-      empty_ggplot
+      g <- empty_ggplotly
       
       
     } else if(nrow(data) > 0 ){
@@ -2980,7 +2949,7 @@ server <- function(input,output, session){
     data <- rbind(data_overall, data_sex)
     
     if(nrow(data) == 0 ){
-      empty_ggplot
+      g <- empty_ggplotly
       
       
     } else if(nrow(data) > 0 ){
@@ -3034,7 +3003,7 @@ server <- function(input,output, session){
     data <- rbind(data_overall, data_sex)
     
     if(nrow(data) == 0 ){
-      empty_ggplot
+      g <- empty_ggplotly
       
     } else if(nrow(data) > 0 ){
       
@@ -3125,7 +3094,7 @@ server <- function(input,output, session){
     data <- data_monthly_spec()
     
     if(nrow(data) == 0 ){
-      empty_ggplot
+      g <- empty_ggplotly
       
       
     } else if(nrow(data) > 0 ){
@@ -3173,7 +3142,7 @@ server <- function(input,output, session){
     data <- data_monthly_spec()
     
     if(nrow(data) == 0 ){
-      empty_ggplot
+      g <- empty_ggplotly
       
       
     } else if(nrow(data) > 0 ){
@@ -3272,7 +3241,8 @@ server <- function(input,output, session){
     
     if(nrow(data_antibiogram2) == 0){ # if the data is empty
       
-      data_null <- data.frame(None = c("No data available. Please select other inputs."))
+      # data_null is an empty dataframe
+      dat <-  DT::datatable(data = data_null)
       
     } else if(nrow(data_antibiogram2) > 0 ){ # if the data is not empty
       
@@ -3299,9 +3269,6 @@ server <- function(input,output, session){
         clrs <- rev(c("#fffeed", pal_num_CBfriendly(seq(0,90,10)))) # 11 colours, # turn the heat map into 10 colours
       }
       
-    } # close if else  based on empty data
-    
-    
     
     
     # How long to start the table
@@ -3328,6 +3295,8 @@ server <- function(input,output, session){
     # Option of displaying percentage in each cell, add:
     # %>% formatPercentage(names(data), number of decimal places)  # at the end
     
+    
+    } # close if else  based on empty data
     
     
     dat
@@ -3648,5 +3617,3 @@ server <- function(input,output, session){
 ## 4. Shiny App ## ---------------------------------------------------------------------------------------------------
 ##**************##
 shinyApp(server = server, ui = ui)
-
-
