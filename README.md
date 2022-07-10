@@ -2,7 +2,7 @@
 
 This project is a collaboration between the Menzies School of Health Research and the University of Melbourne.
 The aim is to help track the change in antimicrobial resistance (AMR) over space and time. We provide various visualisations of the resistance data to help practitioners and decision-makers in their management. At the time of its launch (July 2021), the data is largely from the Top End of Australia.
-For more information, please contact either the hotspots team at or Teresa Wozniak, Program Lead on teresa.wozniak@menzies.edu.au . 
+For more information, please contact either the hotspots team at HOTspots@menzies.edu.au or Teresa Wozniak, Program Lead on teresa.wozniak@menzies.edu.au . 
 
 ## Data and Methodology
 Antibiotic susceptibility data have been contributed by four main pathology service providers across three jurisdictions in northern Australia. These are Territory Pathology (Northern Territory), Pathology Queensland, Western Diagnostics (Western Australia and Northern Territory) and PathWest (Western Australia).  
