@@ -11,11 +11,14 @@
 ### Resistance Data ----------------------------------------------------------------------------------------------------------------------------
 
 # Read in the data
-hotspot_monthly_data <- clean_data(raw_file = "HOTspots_monthly.csv")
-hotspot_yearly_data <- clean_data(raw_file = "HOTspots_yearly.csv")
-hotspot_yearly_split <- clean_data(raw_file = "HOTspots_yearly_age&sex.csv")
-hotspot_yearly_splitage <- clean_data(raw_file = "HOTspots_yearly_age.csv")
-hotspot_yearly_splitsex <- clean_data(raw_file = "HOTspots_yearly_sex.csv")
+hotspot_monthly_data <- read.csv("www/data_clean/HOTspots_monthly.csv")
+hotspot_yearly_data <- read.csv("www/data_clean/HOTspots_yearly.csv")
+#hotspot_yearly_split <- read.csv("www/data_clean/HOTspots_yearly_age&sex.csv")
+hotspot_yearly_splitage <- read.csv("www/data_clean/HOTspots_yearly_age.csv")
+hotspot_yearly_splitsex <- read.csv("www/data_clean/HOTspots_yearly_sex.csv")
+
+hotspot_monthly_data$date_dmy <- as.Date(hotspot_monthly_data$date_dmy)
+
 
 # Consider a timer or a sceduler that will run the datamanipulation script every time the data is updated
 
@@ -27,10 +30,8 @@ hotspot_yearly_splitsex <- clean_data(raw_file = "HOTspots_yearly_sex.csv")
 
 # Shapefile map of Austalia
 # Filtered to the regions with data
-SA3_data <- rgdal::readOGR("www/data/Australian_regions/Aus_regions.shp") %>%
-  subset(SA3_NAME16 %in% unique(hotspot_yearly_data$region))
-
+SA3_data <- sf::st_read("www/data_clean/Australian_regions/Aus_regions.shp")
 
 # Locations of cities as points
 # Read in the csv file
-cities_names <- read.csv("www/data/Australian_regions/Cities.csv")
+cities_names <- read.csv("www/data_clean/Australian_regions/Cities.csv")
