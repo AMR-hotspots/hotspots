@@ -19,7 +19,7 @@ show_logos <- fluidRow(
 # at the top of the landing page
 summary_boxes <-                       
   fluidRow(
-    column(2, image_logo('HOTspots')), #, width = "250px"
+    column(2, image_logo('Logo_HOTspots.png')), #, width = "250px"
     valueBoxOutput("VBox_organism", width = 2), # , width = 2
     valueBoxOutput("VBox_antibiotic", width = 2),
     valueBoxOutput("VBox_regions", width = 2),
