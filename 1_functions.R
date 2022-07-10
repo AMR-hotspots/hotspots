@@ -7,11 +7,8 @@
 # Project aim: Create a shiny app to map antimicrobial resistance 
 # Script aim: Create functions
 
-
-# documentation - code > insert 
-
-# do this
-# state the packages for the files to be explicit, using ::
+# To add documentation:
+# code > insert roxygen skeleton
 
 
 
@@ -29,10 +26,11 @@ text_to_code <- function(message){
   
   replaced <- message %>%
     stringr::str_replace_all( ":", "%3A") %>%
-    str_replace_all( "/", "%2F") %>%
-    str_replace_all( " ", "%20")
+    stringr::str_replace_all( "/", "%2F") %>%
+    stringr::str_replace_all( " ", "%20")
   return(replaced)
 }
+
 
 
 
@@ -138,43 +136,3 @@ image_logo <- function(image_name) {
 }
 
 
-
-# Clean data
-# raw_file must be located in the www/data folder
-#' Clean antimicrobial resistance data
-#' @description Takes the raw files, modifies the monthly and split by age data, changes the region names to be more descriptive, removes VRE as a bug.
-#'
-#' @param raw_file The name of the file containing the raw data which must be located in the www/data folder.
-#'
-#' @return A dataframe.
-
-clean_data <- function(raw_file) {
-  
-  # Read in data
-  df <- read.csv(paste0("www/data/", raw_file))
-  
-  # Find only the monthly data
-  # Change the text coloumn for the month into a date with the day as the first of the month
-  if(any(colnames(df) == "month_year")){
-    df$date_dmy <- as.Date(paste("01", df$month_year), format = "%d %b %y")
-  }
-  
-  # Find only the data split by age groups
-  # and set the levels - not sure this works within the plotly environment
-  if(any(colnames(df) == "age_group")){
-    df$age_group <- as.factor(df$age_group)
-    age_levels <- c("<NA>", "unknown", "0-5", "6-15", "16-25", "26-40", "41-60", "61-80", "81+")
-    df$age_group <- factor(df$age_group, levels = age_levels)
-  }
-  
-  # Change the region names to be more descriptive
-  df$region[df$region == "North West"] <- "North Western Queensland"
-  df$region[df$region == "Mid East"] <- "Mid-eastern Western Australia"
-  df$region[df$region == "Mid West"] <- "Mid-western Western Australia"
-  df$region[df$region == "South"] <- "Southern Western Australia"
-  
-  # remove VRE as an organism
-  df <- df[which(df$organism != "VRE"),]
-  
-  return(df)
-}
