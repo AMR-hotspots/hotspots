@@ -1,5 +1,15 @@
+# RStudio files
 .Rproj.user
+# History files
 .Rhistory
+.Rapp.history
+# Session data files
 .RData
+# User specific files
 .Ruserdata
+# Shiny app files
 rsconnect/
+# The data files - they are too big to save
+www/data_clean/
+# DS store files
+www/.DS_Store
