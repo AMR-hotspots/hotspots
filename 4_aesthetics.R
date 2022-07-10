@@ -41,7 +41,8 @@ headerCallback2 <- c(
 )
 
 
-### Plots -----------------------------------------------------------------------------------------------------------------------------------------------
+### Empty if no data is available -----------------------------------------------------------------------------------------------------------------------------------------------
+# For ggplots
 empty_ggplot <- ggplotly(ggplot(data.frame()) + 
                            geom_point() +
                            xlim(2000, 2020) +
@@ -51,13 +52,11 @@ empty_ggplot <- ggplotly(ggplot(data.frame()) +
                            annotate("text", x = 2010, y = 50, label = "There is no data available. Please select other inputs.")
 )
 
-# set the ggplot theme
-# theme_set(
-#   theme_bw() +
-#     theme(text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
-#           legend.position = "top")
-# )
 
+empty_ggplotly <- ggplotly(empty_ggplot)
+
+# For antibiogram
+data_null <- data.frame(None = c("No data available. Please select other inputs."))
 
 
 ### Colour palette ------------------------------------------------------------------------------------------------------------------
@@ -241,3 +240,10 @@ pal_num_year <- colorNumeric(hotspot_palette$year, domain = min(hotspot_yearly_d
 # if(length(unique(hotspot_monthly_data$sample_type))  != length(hotspot_palette$sample)) print("Check all the sample types in the data have a colour in the sample colour palette")
 # if(length(unique(hotspot_yearly_splitage$age))  != length(hotspot_palette$age)) print("Check all the age brackets in the data have a colour in the age colour palette")
 
+
+# set the ggplot theme
+# theme_set(
+#   theme_bw() +
+#     theme(text = element_text(size=15), #axis.text.x = element_text(angle = 45, hjust = 1),
+#           legend.position = "top")
+# )
