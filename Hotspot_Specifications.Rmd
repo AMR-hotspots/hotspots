@@ -1,0 +1,437 @@
+---
+title: "Hotspots details"
+author: "Alys Young"
+date: "12/07/2022"
+output: html_document
+---
+
+This document outlines details and specifications of the HOTspots platform designed to display and communication temporal and spatial trends in anti-microbial resistance (AMR). 
+
+### Details and links
+
+Github: [https://github.com/AMR-hotspots/hotspots](https://github.com/AMR-hotspots/hotspots)  
+Website: [https://anti-microbe-res.shinyapps.io/hotspots](https://anti-microbe-res.shinyapps.io/hotspots)  
+
+
+```{r setup, include=FALSE}
+## Packages
+library(leaflet)
+library(dplyr)
+library(kableExtra)
+library(lubridate)
+
+## Directories
+proj_dir <- "/Users/aryo/Documents/2. RA Hotspots/hotspots" # Deakin comp
+#proj_dir <- "/Users/alys/Documents/2. RA Hotspots/hotspots" # Personal laptop
+
+
+## Read in the data
+hotspot_monthly_data <- read.csv("www/data_clean/HOTspots_monthly.csv")
+hotspot_yearly_data <- read.csv(file.path(proj_dir,  "www/data_clean/HOTspots_yearly.csv"))
+hotspot_yearly_splitage <- read.csv("www/data_clean/HOTspots_yearly_age.csv")
+hotspot_yearly_splitsex <- read.csv("www/data_clean/HOTspots_yearly_sex.csv")
+
+SA3_data <- sf::st_read("www/data_clean/Australian_regions/Aus_regions.shp")
+
+
+```
+
+
+## Notes on the functionality
+
+__Visualisation and format requirements__
+A choropleth (or 'heat map') is useful for policy and decision makers. An antibiogram and region-specific is required for practitioners. Time series data is most useful for policy but also potentially interesting to practitioners.
+
+
+__Notes and considerations__  
+
+* In the landing page map as well as in the plots, there is the option to look at AMR over a number of years. Please note, the percentage resistance needs to be recalculated once the years have been collated rather than averaging the resistance for each year as there are different numbers of isolates taken.  
+* The "load plots" button save substantial time and processing power. 
+* The organisms names should be italicised.  
+* The antibiogram displays sensitivity rather than resistance like the rest of the visualisations on the platform.  
+* When selecting inputs on the plotting pages, the options for future choices should update as early selections are made.
+* The loading symbols for the plots helped to indicate to the user that the objects were loading.
+* Text when hovering over the plots was implemented using the package plotly and helped convey the exact values of the data while not take away from displaying the trends.
+
+__Future improvements:__ 
+
+* Increase the processing speed. This is one of the biggest drawbacks currently.  
+* Improve the user story and accessibility of the design. Potential to add more features around engagement and education for patients or researchers.  
+* Plot axis labels.  
+* Plot x-axis is not formatted correctly for years and should never show a decimal place.   
+* Addition of custom plot legends which R/ggplot could not handle.  
+* Automated reporting including 6-monthly reports after the data is updated, targeted reports for each data provider, and implementation of thresholds for the AMR to notify key decision makers.  
+* Improvements to security and storage of data.
+
+## Data
+Raw data is provided from pathologists across Australia approximately once every six months. Currently there is a proforma and specific antibiotics and organisms. From now we will ask for all available data.
+
+Currently provided to the shiny app in 4 files: 
+1. hotspot_monthly_data
+2. hotspot_yearly_data
+3. hotspot_yearly_splitage
+4. hotspot_yearly_splitsex
+
+As the names suggest, "hotspot_monthly_data" contains the date with the specific months of sampling where as the other 3 data sets begging with "hotspot_yearly_" contain the yearly aggregations.   
+
+### Yearly data
+
+In terms of the yearly data, we decided to keep the 3 data sets (aggregated by age and sex, aggregated by age but with sex, and aggregated by sex but with age groups) to minimise processing time. Only 2 of the plots required the data to be split by either age group or sex. Therefore, rather than aggregate the data within the app each time it loads, we did this once when the data was being processed. The 3 data sets very similar structures. The aggregated yearly data set has `r length(colnames(hotspot_yearly_data))` columns; `r colnames(hotspot_yearly_data)` , and `r nrow(hotspot_yearly_data)` rows.
+
+The data set with the age groups, `r "hotspot_yearly_splitage"`, includes the `r colnames(hotspot_yearly_splitage)[!(colnames(hotspot_yearly_splitage) %in% colnames(hotspot_yearly_data))]` column. The data set with the sex, `r "hotspot_yearly_splitsex"`, includes the `r colnames(hotspot_yearly_splitsex)[!(colnames(hotspot_yearly_splitsex) %in% colnames(hotspot_yearly_data))]` column. 
+
+
+```{r yearly_data, include=FALSE}
+
+## Factors
+col_fact <- colnames(hotspot_yearly_data)[!(colnames(hotspot_yearly_data) %in% c("num_of_tests_yearly", "resistant_yearly", "susceptible_yearly", "percent_resistant_yearly"))]
+
+df_fact_output <- data.frame()
+for(i in 1:length(col_fact)){
+  df_fact_output[i,1] <- col_fact[i]
+  df_fact_output[i,2] <- nrow(unique(hotspot_yearly_data[col_fact[i]]))
+  df_fact_output[i,3] <- toString(sort(unique(hotspot_yearly_data[col_fact[i]]) %>% pull))
+}
+
+df_fact_output[nrow(df_fact_output) + 1, 1] <- "age_group"
+df_fact_output[nrow(df_fact_output), 2] <- nrow(unique(hotspot_yearly_splitage["age_group"]))
+df_fact_output[nrow(df_fact_output), 3] <- toString(sort(unique(hotspot_yearly_splitage["age_group"]) %>% pull))
+
+
+df_fact_output[nrow(df_fact_output) + 1, 1] <- "sex"
+df_fact_output[nrow(df_fact_output), 2] <- nrow(unique(hotspot_yearly_splitsex["sex"]))
+df_fact_output[nrow(df_fact_output), 3] <- toString(sort(unique(hotspot_yearly_splitsex["sex"]) %>% pull))
+
+colnames(df_fact_output) <- c("Variable", "countUnique", "uniqueValues")
+
+## Numerical columns
+col_num <- colnames(hotspot_yearly_data)[colnames(hotspot_yearly_data) %in% c("num_of_tests_yearly", "resistant_yearly", "susceptible_yearly", "percent_resistant_yearly")]
+
+df_num_output <- data.frame()
+for(i in 1:length(col_num)){
+  df_num_output[i,1] <- col_num[i]
+  df_num_output[i,2] <- min(hotspot_yearly_data[col_num[i]])
+  df_num_output[i,3] <- max(hotspot_yearly_data[col_num[i]])
+}
+colnames(df_num_output) <- c("Variable", "minimumValue", "maximumValue")
+
+```
+
+```{r yearFactorTable, echo=FALSE}
+df_fact_output %>% 
+kbl(caption = "Values for the categorial variables in the yearly data.") %>%
+  kable_styling(full_width = TRUE)
+```
+
+
+```{r yearNumericalTable, echo=FALSE}
+df_num_output %>% 
+kbl(caption = "Values for the numerical variables in the yearly data.") %>%
+  kable_styling(full_width = FALSE)
+```
+
+
+### Monthly data
+
+```{r monthly_data, message=FALSE, warning=FALSE, include=FALSE}
+
+## Factors
+col_fact <- colnames(hotspot_monthly_data)[!(colnames(hotspot_monthly_data) %in% c("num_of_tests_monthly_raw", "resistant_monthly_raw", "susceptible_monthly_raw", "percent_resistant_monthly_raw", "month_year", "date_dmy"))]
+
+df2_fact_output <- data.frame()
+for(i in 1:length(col_fact)){
+  df2_fact_output[i,1] <- col_fact[i]
+  df2_fact_output[i,2] <- nrow(unique(hotspot_monthly_data[col_fact[i]]))
+  df2_fact_output[i,3] <- toString(sort(unique(hotspot_monthly_data[col_fact[i]]) %>% pull))
+}
+
+colnames(df2_fact_output) <- c("Variable", "countUnique", "uniqueValues")
+
+
+
+## Numerical
+hotspot_monthly_data$date_dmy <- lubridate::ymd(hotspot_monthly_data$date_dmy)
+col_num <- colnames(hotspot_monthly_data)[colnames(hotspot_monthly_data) %in% c("num_of_tests_monthly_raw", "resistant_monthly_raw", "susceptible_monthly_raw", "percent_resistant_monthly_raw", "date_dmy")]
+
+df2_num_output <- data.frame()
+for(i in 1:length(col_num)){
+  df2_num_output[i,1] <- col_num[i]
+  df2_num_output[i,2] <- as.character(min(hotspot_monthly_data[col_num[i]] %>% pull))
+  df2_num_output[i,3] <- as.character(max(hotspot_monthly_data[col_num[i]] %>% pull))
+}
+colnames(df2_num_output) <- c("Variable", "minimumValue", "maximumValue")
+```
+
+For the plotting of the monthly data, it is aggregated by sample_type, onset , organism, region, antimicrobial. The plots show 1) the percent resistance "percent_resistant_monthly_raw" (y axis) against the date "date_dmy" (x axis), and 2) the number of isolates "num_of_tests_monthly_raw" (y-axis) against the date as well. Where the num_of_tests_monthly_raw is less than 15 for any month, the plots are shown with a warning regarding the interpretation of low isolate numbers.   
+
+
+```{r monthFactorTable, echo=FALSE}
+df2_fact_output %>% 
+kbl(caption = "Values for the categorial variables in the yearly data.") %>%
+  kable_styling(full_width = TRUE)
+```
+
+
+```{r monthNumericalTable, echo=FALSE}
+df2_num_output %>% 
+kbl(caption = "Values for the numerical variables in the yearly data.") %>%
+  kable_styling(full_width = FALSE)
+```
+
+
+Here is some simulated monthly data to show the structure:
+```{r monthSimulate, echo=TRUE}
+
+simulate_monthly <- expand.grid(
+  source = "Human",
+  jurisdiction = "FNQ",
+  region = c("Townsville", "Cairns and Hinterland"),
+  sample_type = "All",
+  onset = c("Community", "Hospital"),
+  organism = c("E. coli", "K. pneumoniae"),
+  antimicrobial = c("Amikacin", "Cefazolin"),
+  year = "2020",
+  month_year = c("Jul 20", "Aug 20"), 
+  num_of_tests_monthly_raw = NA,
+  resistant_monthly_raw = NA,
+  susceptible_monthly_raw = NA,
+  percent_resistant_monthly_raw = NA,
+  date_dmy = NA
+)
+
+
+simulate_monthly$num_of_tests_monthly_raw <- sample(1:10, size = nrow(simulate_monthly), replace = TRUE)
+simulate_monthly$resistant_monthly_raw <- simulate_monthly$num_of_tests_monthly_raw - sample(1:10, size = nrow(simulate_monthly), replace = TRUE)
+simulate_monthly$resistant_monthly_raw[simulate_monthly$resistant_monthly_raw < 0] <- 0
+simulate_monthly$susceptible_monthly_raw <- simulate_monthly$num_of_tests_monthly_raw  - simulate_monthly$resistant_monthly_raw 
+simulate_monthly$percent_resistant_monthly_raw <- (simulate_monthly$resistant_monthly_raw/simulate_monthly$num_of_tests_monthly_raw)*100
+
+simulate_monthly$date_dmy <- as.Date(paste("01", simulate_monthly$month_year), format = "%d %b %y")
+
+simulate_monthly %>% 
+kbl(caption = "Simulated monthly data.") %>%
+  kable_styling(bootstrap_options = c("striped", "condensed"))
+
+```
+
+
+
+### Spatial map
+
+The landing page map is based on the ABS statistical area 3, with boundaries changes in QLD.  
+
+```{r map, echo=FALSE}
+leaflet(SA3_data) %>% 
+        fitBounds(lng1 = 114.303954, lat1 = -32.801883, lng2 = 150.441990, lat2 =  -9.142143) %>% # the starting position of the map
+      addTiles(options = providerTileOptions(minZoom = 2)) %>%  # The background map
+  addPolygons()
+```
+
+
+
+
+
+
+
+## Colour palette
+The colours used in the map and plots are listed and plotted below. For the heat map there are two colour palettes: the first is a green to red scheme in line with a traffic light system indicating low to high resistance. The second uses more blue-toned colours at the beginning instead of green to allow the map to be as understandable by people with red-green colour blindness. The colour blind-friendly palette was not used as the default as it has less instant association with good to bad. For the green-red heat colour palette, red was chosen to occur at 50% as the importance of AMR occurs at lower levels. This palette should be adjusted when used for alternative purposes to display a threshold important to the specific topic. Colour for all other aspects were repeated to create continuity within the platform. Regions was the variable with the most number of categories and set the total number of colours required. To reach the large number of unique colours, we adjusted the tint and tone.  
+
+
+
+```{r colour palette}
+hotspot_palette <- list(
+  
+  ## For heat map
+  `heat`  = c(
+    `green`         = "#629c25",
+    `yellow orange` = "#FFF100", 
+    `orangy yellow` = "#FFD100",
+    `orange`        = "#fc8105", 
+    `dark orange`   = "#e34f00",
+    `red`           = "#ff0000",
+    `red2`          = "#db0000",
+    `deep red`      = "#C00004",
+    `dark red`      = "#810000",
+    `almost black`  = "#410000"),
+  
+  ## For heat map - colour-blind friendly
+  `heat_CBfriendly` = c(
+    `teal`          = "#57C4AD",
+    `yellow orange` = "#E6E1BC", 
+    `orangy yellow` = "#E6BD85",
+    `orange`        = "#EDA247", 
+    `dark orange`   = "#ED8047",
+    `red`           = "#DB4325",
+    `red2`          = "#db0000",
+    `deep red`      = "#C00004",
+    `dark red`      = "#810000",
+    `almost black`  = "#410000"),
+  
+
+  ## For the regions
+  `regions` = c( 
+    ## QLD
+    'Cairns and Hinterland'        = "#CC6677", # rose
+    'Mackay'                       = "#88CCEE", #cyan 
+    'North Western Queensland'     = "#44AA99", # teal
+    'Torres and Cape'              = "#117733", # green
+    'Townsville'                   = "#DDCC77", # sand
+    #'Outback - South' = "#332288", # indigo
+    #'Central Highlands (Qld)' = "#999933", # olive
+    #'Rockhampton' = "#882255", # wine
+    #'Biloela' = "#AA4499", # purple
+    
+    ## NT
+    # colours lightened
+    'Alice Springs'                 = "#FF8096", # rose
+    'Darwin'                        = "#CCEEFF", # cyan
+    'Gove'                          = "#92EFD3", # teal
+    'Katherine'                     = "#CCDDAA", # green
+    'Tennant Creek'                 = "#FFE57E", # sand FFEC8C
+    
+    ## WA 
+    # colours darkened
+    'Kimberley'                     = "#78343F", # rose
+    'Mid-eastern Western Australia' = "#225555", # cyan 
+    'Mid-western Western Australia' = "#36877A", # teal
+    'Perth'                         = "#225522", # green
+    'Pilbara'                       = "#A59858", # sand
+    'Southern Western Australia'    = "#222255" # indigo
+    
+    ## Overall - grey scale
+    # 'NT overall'  = "#404040", # darkest grey
+    # 'FNQ overall' = "#5e5d5d", # dark grey 
+    # 'WA overall'  = "#757575", #  grey
+    # 'NSW overall'  = "#8a8a8a",
+    # 'ACT overall' = "#9e9e9e", 
+    # 'VIC overall'  = "#b5b5b5" # light grey
+    # 'SA overall' = "#cfcfcf", # lightest grey
+    # 'TAS overall'  = "#242424" # deep deep dark grey
+    
+    ## Overall - coloured
+    # 'FNQ'   = "#44AA99", # teal
+    # 'NT'    = "#332288", # indigo
+    # 'WA'    = "#78343F" # rose
+    
+    ## Other colours available to use
+    
+    # colours lightened
+    #'region name' = "#8183E6", # indigo
+    #'region name' = "#C5C86E", # olive
+    #'region name' = "#F488EE", # purple
+    
+    # colours darkened
+    #'region name' = "#2F345B", # indigo
+    #'region name' = "#7B7B29", # olive
+    #'region name' = "#781D4A", # wine
+    #'region name' = "#803273", # purple
+    
+  ),
+  
+  # For the Jurisdictions
+  `jurisdiction` = c( 'FNQ'   = "#44AA99", # teal
+                      'NT'    = "#332288", # indigo
+                      'WA'    = "#78343F", # rose
+                      'Far North Queensland' = "#44AA99", # teal
+                      'Nothern Australia'    = "#332288", # indigo
+                      'Western Australia'    = "#78343F" # rose
+                      #'NSW' = "#225555" #cyan
+                      #'VIC' = "#225522" #green
+                      #'ACT' = "#999933" #olive
+                      #'TAS' = "#A59858" #sand
+                      #''    = "#781D4A", # wine
+                      #''    = "#803273", # purple
+  ), 
+
+  # For the Jurisdictions
+  `jurisdiction_range` = c( 'FNQ' = "#92EFD3", # teal
+                            'NT'  = "#8183E6", # indigo
+                            'WA'  = "#FF8096"), # rose
+  #'NSW'  = "#CCEEFF" #cyan
+  #'VIC'  = "#CCDDAA" #green
+  #'ACT'  = "#C5C86E" #olive
+  #'TAS'  = "#FFE57E" #sand
+  
+  ## For the onset locations
+  `onset` = c('Overall'   = "#332288" , # indigo
+              'Hospital'  = "#88CCEE", # cyan
+              'Community' = "#44AA99"), # teal
+  
+  ## For the sample types
+  `sample` = c('All'                = "#332288" , # indigo
+               'Blood'              = "#88CCEE", # cyan
+               'Other'              = "#44AA99", # teal
+               'Respiratory'        = "#117733", # green
+               'Skin & soft tissue' = "#A0515E", # rose
+               'Urine'              = "#999933"), #olive
+  
+  ## For the age brackets
+  `age` = c('0-5'     = "#332288" , # indigo
+            '6-15'    = "#88CCEE", # cyan
+            '16-25'   = "#44AA99", # teal
+            '26-40'   = "#117733", # green
+            '41-60'   = "#A0515E", # rose
+            '61-80'   = "#DDCC77", # sand
+            '81+'     = "#999933", # olive
+            'unknown' = "#803273" # purple
+            
+  ), 
+  
+  `year` = c( 
+    `light red`     = "#FFE0E2",
+    `red`           = "#ff0000",
+    `dark red`      = "#810000"),
+  
+  # For the sexes
+  `sex` = c( 'M'    = "#44AA99", # teal
+             'F'  = "#332288", # indigo
+             'Overall' = "#999933",
+             
+             # repeated with the names changed
+             'Male'    = "#44AA99", # teal
+             'Female'  = "#332288", # indigo
+             'Both' = "#999933") # olive
+)
+
+```
+
+
+
+
+
+```{r colour palette plots, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+## Creating the plots
+
+## Continuous
+
+## heat
+pal_num <- colorNumeric(hotspot_palette$heat, domain = 0:100)
+## heat_CB friendly
+pal_num_CBfriendly <- colorNumeric(hotspot_palette$heat_CBfriendly, domain = 0:100)
+
+## year
+pal_num_year <- colorNumeric(hotspot_palette$year, domain = min(hotspot_yearly_data$year):max(hotspot_yearly_data$year))
+
+
+pie(rep(1, 100), col = pal_num(1:100), labels = NA, clockwise = TRUE, main = "Heat map")
+pie(rep(1, 100), col = pal_num_CBfriendly(1:100), labels = NA, clockwise = TRUE, main = "Colour blind heat map")
+pie(rep(1, max(hotspot_yearly_data$year) - min(hotspot_yearly_data$year)), col = pal_num_year(min(hotspot_yearly_data$year):max(hotspot_yearly_data$year)), clockwise = TRUE, main = "Years")
+
+## Discrete
+
+
+pie(rep(1, length(hotspot_palette$regions)), col = hotspot_palette$regions, labels = NA,  main = "Regions")
+pie(rep(1, length(hotspot_palette$jurisdiction)/2), col = hotspot_palette$jurisdiction, labels = NA,  main = "Jurisdiction")
+pie(rep(1, length(hotspot_palette$jurisdiction_range)), col = hotspot_palette$jurisdiction_range, labels = NA,  main = "Range within jurisdiction")
+pie(rep(1, length(hotspot_palette$onset)), col = hotspot_palette$onset, labels = NA,  main = "Onset setting")
+pie(rep(1, length(hotspot_palette$sample)), col = hotspot_palette$sample, labels = NA,  main = "Sample type")
+pie(rep(1, length(hotspot_palette$age)), col = hotspot_palette$age, labels = NA,  main = "Person's age")
+pie(rep(1, length(hotspot_palette$sex)/2), col = hotspot_palette$sex, labels = NA,  main = "Person's sex")
+```
+
+
+
+
+
+
