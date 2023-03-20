@@ -180,13 +180,14 @@ hotspot_palette <- list(
               'Hospital'  = "#88CCEE", # cyan
               'Community' = "#44AA99"), # teal
   
+  
   ## For the sample types
   `sample` = c('All'                = "#332288" , # indigo
-               'Blood'              = "#88CCEE", # cyan
+               'Blood'              = "#A0515E", # rose
+               'Urine'              = "#999933",
+               'Skin & soft tissue' = "#88CCEE", # cyan
                'Other'              = "#44AA99", # teal
-               'Respiratory'        = "#117733", # green
-               'Skin & soft tissue' = "#A0515E", # rose
-               'Urine'              = "#999933"), #olive
+               'Respiratory'        = "#117733"), # green
   
   ## For the age brackets
   `age` = c('0-5'     = "#332288" , # indigo
