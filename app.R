@@ -15,8 +15,8 @@
 
 # Deploy app
 # if (!require(rsconnect)) install.packages('rsconnect')
-# rsconnect::deployApp(account = 'anti-microbe-res')
-
+# rsconnect::deployApp(account = 'anti-microbe-res', appName = "hotspots")
+# rsconnect::forgetDeployment()
 
 
 
@@ -90,11 +90,11 @@ ui <- fluidPage(
   # Load shiny pages
   useShinydashboard(),
   useShinyjs(),
-  useShinyalert(),
+  # useShinyalert(),
   
   #options(shiny.sanitize.errors = TRUE), # use this to change error messages to something generic
   tags$head(tags$style(".shiny-output-error{visibility: hidden}")),
-  tags$head(tags$style(".shiny-output-error:after{content: 'An error has occurred. Please try different inputs on the left hand side. Contact the website administrators on HOTspots@menzies.edu.au if the error persists.'; visibility: visible}")),
+  tags$head(tags$style(".shiny-output-error:after{content: 'An error has occurred. Please try different inputs on the left hand side.'; visibility: visible}")),
   
   # Make the 8th object in the navigation bar (the share button) go to the righthand side
   # If you add more objects to the navigation bar, then you much update this code so that nth-child(8) has the number that the share button is
@@ -102,7 +102,7 @@ ui <- fluidPage(
   tags$head(tags$style(HTML("
                            .navbar-nav {float: none !important;}
                            .navbar {font-size: 15px;}
-                           .navbar-nav > li:nth-child(8) {float: right;}
+                           .navbar-nav > li:nth-child(6) {float: right;}
                            .small-box {height: 85px; margin-bottom: 0px;}
                            
                             #microbe_name+ div>.selectize-input{font-style: italic;}
@@ -271,10 +271,10 @@ ui <- fluidPage(
                           h4(uiOutput("map_title")),
                           
                           # Map
-                          leafletOutput("leaflet_map", height=600),
+                          leafletOutput("leaflet_map", height = 600) #,
                           
                           # Citation
-                          p(how_to_cite)
+                          # p(how_to_cite)
                           ) # close main panel
                       ) # close sidebar layout
              ), # close tabPanel
@@ -800,12 +800,10 @@ ui <- fluidPage(
                           h4(textOutput("antibiogram_text")),
                           
                           # Table
-                          DT::dataTableOutput("antibiogram_table") %>% withSpinner(type = 5),
-                          br(),
-                          br(),
+                          DT::dataTableOutput("antibiogram_table") %>% withSpinner(type = 5) #,
                           
                           # Citation at the bottom of the page
-                          p(how_to_cite)
+                          # p(how_to_cite)
                           
                         ) # close main panel
                       ) # close sidebar layout
@@ -827,205 +825,206 @@ ui <- fluidPage(
              
              
              
-             # Tab 4 - Data -----------------------------------------------------------------------------------------------------
-             tabPanel(("Data and Methods"),
-                      icon = icon("list-ul"),
-                      
-                      ###  Data disclaimer -----------------------------------------------------------------------------------------
-                      
-                      # Title
-                      h3("Data disclaimer"),
-                      
-                      # Text
-                      p("Unless otherwise stated, the information contained in the dataset is provided by the laboratories Territory Pathology (Northern Territory), PathWest (Western Australia), Pathology Queensland (Queensland) and Western Diagnostics (WA and NT data). 
-                        With respect to the HOTspots dataset provided by Menzies School of Health Research (‘Menzies), and to the extent permitted by law, neither Menzies nor or any of its employees, makes any warranty, express or implied, or assumes any legal liability or responsibility for the accuracy, completeness, or usefulness of any information (either isolated or in the aggregate) contained, or represents that its use would not infringe privately owned rights. 
-                        While the data is provided in good faith and to the best of Menzies knowledge, Menzies does not commit to it being updated. While every effort is made to ensure the data quality, the data is provided 'as is'. Menzies or HOTspots investigators are not responsible for data management after extraction and transmission to the recipient. 
-                        The data and information in the dataset provided here are intended for use by persons possessing some technical skill and knowledge in epidemiology, surveillance or data management."),
-                      p("In order to use the HOTspots extracted datasets provided users must adhere to the following guidelines:"),
-                      p("•	consider whether a breach of confidentiality is likely due to a low cell count and make no use of the identity of any person discovered inadvertently;"),
-                      p("•	not to distribute or sell the datasets to any other individual, institution, or organization without the prior written consent of Menzies and HOTspots investigators."),
-                      p("The accuracy of the users' statistical analysis and the findings they report are not the responsibility of Menzies or HOTspots investigators. Menzies or HOTspots investigators shall not be held liable for improper or incorrect use of the data. 
-                        In no event shall Menzies or HOTspots be liable for any incidental, indirect, consequential or special damages of any kind, or any damages whatsoever, including, without limitation, those resulting from loss of profit, loss of contracts, goodwill, or business relationships, arising out of or in connection with the use of the data. 
-                        Menzies do not warrant that the files, the servers and the databases used for data storage, extraction, management and transmission are error, virus or bug free and the recipient accepts that it is its responsibility to make adequate provision for protection against such threats."),
-                      p("For more information, please see the", tags$a(href="https://www.menzies.edu.au/page/Policies/", "Menzies policy website"), ", including the", tags$a(href="https://www.menzies.edu.au/icms_docs/307159_Information_and_Privacy_Policy_-_2019.pdf", "Information and Privacy policy")),
-                      
-                      
-                      ### Methods -------------------------------------------------------------------------------------------------------
-                      
-                      # Title
-                      h3("Methodology"),
-                      
-                      # Text
-                      p("Antibiotic susceptibility data have been contributed by four main pathology service providers across three jurisdictions in northern Australia. These are Territory Pathology (Northern Territory), Pathology Queensland, Western Diagnostics (Western Australia and Northern Territory) and PathWest (Western Australia)."),
-                      p("Between pathology providers there were variations in the content and format of the supplied data, requiring a process of data cleaning and standardisation. This is in part due to the variation in antimicrobial susceptibility testing (AST) guidelines used (Northern Territory and Western Australia use CLSI while Queensland used CLSI to 30th  June 2012 and then moved to EUCAST), however it is also due to individual laboratory policies and processes and the availability of antimicrobial agents for testing. For example, Western Diagnostics, PathWest and Territory Pathology all use CLSI, which recommends agents that are important for routine testing against various organisms or organism groups (an antimicrobial panel), however other agents may be tested or reported selectively based on the institution's formulary or substituted with a more practical alternative where their activity is similar. Therefore, the number and type of antimicrobials tested against the same microbes varies between laboratories. The microbes reported also varied, however common pathogens were identified and these microbes are available to select from the dropdown menu."),
-                      p("Data were harmonised across the three jurisdictions by standardising antimicrobial, microbe and sample type nomenclature. Regions within jurisdictions were based on classification by the Australian Bureau of Statistics, Statistical Area Level 3. The healthcare setting was determined by the type of facility at which the sample was collected. Duplicates were removed from the data by selecting the first isolate per person, per calendar year. The percentage of resistant isolates was calculated by dividing the number resistant by the total number of isolates tested. For years with <15 isolates collected and tested, these data (within the region of interest) were added to the following or previous year (or excluded if all 3 years had <15 isolates)."),
-                      p("Territory Pathology provided minimum inhibitory concentrations, to which we applied the 2017 CLSI M100-S27 Performance Standards for AST (27th Edition). All other data were supplied as interpreted values: susceptible (including intermediate) and resistant. Data on age and sex was not available from Territory Pathology and PathWest, and PathWest data was only available by year."),
-                      p(paste0("These methods were last updates on ", date_method_update, ".")),
-                      br(),
-                      
-                      
-                      
-                      ### Explore the data ----------------------------------------------------------------------------------------------
-                      
-                      h3("Explore the data"),
-                      
-                      # Sidebar layout
-                      sidebarLayout(
-                        
-                        # Sidebar panel for inputs on the left ********************************************************************************************************************
-                        sidebarPanel(
-                          
-                          
-                          # Select the location where the infection was identified
-                          radioButtons(inputId = "onset_filt",
-                                       label = "Select healthcare setting:",
-                                       selected = "Overall",
-                                       choices = rev(unique(hotspot_yearly_data$onset))), # change this when animal data is added rev(unique(hotspot_yearly_data$onset))
-                          
-                          # Select the isolate type
-                          selectInput(inputId = "isolatetype_filt",
-                                      label = "Select specimen type:",
-                                      choices = sort(unique(hotspot_yearly_data$sample_type))), ## unique(hotspot_yearly_data$sample_type[hotspot_yearly_data$sample_oranism == "Human"])
-                          
-                          
-                          # Select the microbe name
-                          selectInput(inputId = "microbe_name_filt", 
-                                      label = "Select organism:",
-                                      choices = c("All", sort(unique(hotspot_yearly_data$organism))),
-                                      selected = "All", # none selected as the default when the app opens
-                                      multiple = FALSE), # cannot select multiple
-                          
-                          
-                          # Select the anti-microbe
-                          selectInput(inputId = "antibiotic_name_filt",
-                                      label = "Select antibiotic:",
-                                      choices = c("All",sort(unique(hotspot_yearly_data$antimicrobial))),
-                                      selected = "All",
-                                      multiple = FALSE),
-                          
-                          # Select the region
-                          selectInput(inputId = "region_filt",
-                                      label = "Select a region:",
-                                      choices = regional_lists_andAll,
-                                      selected = regional_lists_andAll[[1]][1],
-                                      multiple = FALSE),
-                          
-                          br(),
-                          
-                          # A slider to select the year
-                          # Alter the style so there in no tail behind
-                          #tags$style(type = "text/css", ".irs-bar { background: none; border-top: none; border-bottom: none;}
-                          #           .irs-bar-edge {background: none; border: none;}"), # setting the blue bar to be nothing on the slider
-                          
-                          # 
-                          #                           radioButtons(inputId = "year_select_filt",
-                          #                                        label = "Which years to display?",
-                          #                                        selected = "All",
-                          #                                        choices = c("All" = "All",
-                          #                                                    "Single year" = "single")), # add in a range?
-                          # 
-                          # 
-                          #                           conditionalPanel(  # conditional to display the year input only when the tab is antimicrobe
-                          #                             condition = "input.year_select_filt == 'single'",
-                          # 
-                          #                             sliderInput(inputId = "year_filt",
-                          #                                         label = "Select a year:",
-                          #                                         value = max(hotspot_yearly_data$year), # default value
-                          #                                         min = min(hotspot_yearly_data$year),
-                          #                                         max = max(hotspot_yearly_data$year),
-                          #                                         step = 1,
-                          #                                         sep = "",
-                          #                                         round = TRUE,
-                          #                                         ticks = FALSE)
-                          #                           ),
-                          
-                          
-                          # Select multiple years
-                          sliderInput(inputId = "year_filt",
-                                      label = "Select year(s):",
-                                      value = c(max(hotspot_yearly_data$year)-5, max(hotspot_yearly_data$year)), # default value
-                                      min = min(hotspot_yearly_data$year),
-                                      max = max(hotspot_yearly_data$year),
-                                      step = 1,
-                                      sep = "",
-                                      round = TRUE,
-                                      ticks = FALSE),
-                          
-                          
-                          
-                          # Select which data (yearly or monthly) to display
-                          checkboxGroupInput(inputId = "data_investigate", label ="Timeframe:",
-                                             choices = c("Yearly data" = "yearly",
-                                                         "Monthly data" = "monthly"),
-                                             selected = "yearly"),
-                          br(),
-                          
-                          # Title
-                          h4("Download the data"),
-                          
-                          # Download buttons
-                          downloadButton(outputId = "downloadData_yearly", label = "Full dataset"),
-                          downloadButton(outputId = "downloadData_yearly_selected", label = "Selected")
-                          
-                          
-                        ), # close the side bar
-                        
-                        
-                        # Main panel for displaying outputs ********************************************************************************************************************
-                        mainPanel(
-                          
-                          # When the show yearly data checkbox is selected
-                          conditionalPanel(
-                            condition = "input.data_investigate.indexOf('yearly') > -1", # yearly is selected in the checkboxes called data_investigate
-                            
-                            # Title
-                            h4("Yearly data"),
-                            
-                            # Table
-                            DT::dataTableOutput("table_data_year"),
-                            br(),
-                            br()
-                            
-                          ),
-                          
-                          # When the show yearly data checkbox is selected
-                          conditionalPanel(
-                            condition = "input.data_investigate.indexOf('monthly') > -1", # monthly is selected in the checkboxes called data_investigate
-                            
-                            # Title
-                            h4("Monthly data"),
-                            
-                            # Table
-                            DT::dataTableOutput("table_data_month"),
-                            br(),
-                            br()
-                          ) # close conditional panel
-                        )# close main panel
-                      ), # close side bar layout
-                      
-                      br(),
-                      br(),
-                      
-                      
-                      ### Terms of Use -------------------------------------------------------------------------------------------------------
-                      
-                      # Title
-                      h3("Terms of use"),
-                      
-                      # Text
-                      p("Users must read and adhere to the terms of the HOTspots Data Disclaimer. Users must not use the datasets in any way which is inconsistent with the Privacy Act 1988 (Cth), the Information Act 2002 (NT), the HOTSpots Data Disclaimer or the HOTspots Terms of Use."),
-                      p("The data and information in the dataset downloaded are intended for use by persons possessing technical skill and knowledge in epidemiology, surveillance and data management. Commercial use of the HOTspots data is not permitted without prior written consent from Menzies."),
-                      p("Except where otherwise stated, downloading and reproduction of published (in paper or electronically) HOTspots data for personal use or for further non-commercial dissemination, are authorised provided appropriate acknowledgement is given to HOTspots investigators as the source. Any publication arising from the dataset provided should credit Menzies and HOTspots investigators in the relevant parts of the publication. Please contact the lead investigator Teresa.wozniak@menzies.edu.au to discuss further."), # TO DO ## add link to the email
-                      
-                      br(),   
-                      
-                      # Citation
-                      p(how_to_cite),
-                      
-                      # Logos
-                      show_logos
-                      
-             ), # close tab panel
+             # # Tab 4 - Data -----------------------------------------------------------------------------------------------------
+             # tabPanel(("Data and Methods"),
+             #          icon = icon("list-ul"),
+             #          
+             #          # ###  Data disclaimer -----------------------------------------------------------------------------------------
+             #          # 
+             #          # # Title
+             #          # h3("Data disclaimer"),
+             #          # 
+             #          # # Text
+             #          # p("Unless otherwise stated, the information contained in the dataset is provided by the laboratories Territory Pathology (Northern Territory), PathWest (Western Australia), Pathology Queensland (Queensland) and Western Diagnostics (WA and NT data). 
+             #          #   With respect to the HOTspots dataset provided by Menzies School of Health Research (‘Menzies), and to the extent permitted by law, neither Menzies nor or any of its employees, makes any warranty, express or implied, or assumes any legal liability or responsibility for the accuracy, completeness, or usefulness of any information (either isolated or in the aggregate) contained, or represents that its use would not infringe privately owned rights. 
+             #          #   While the data is provided in good faith and to the best of Menzies knowledge, Menzies does not commit to it being updated. While every effort is made to ensure the data quality, the data is provided 'as is'. Menzies or HOTspots investigators are not responsible for data management after extraction and transmission to the recipient. 
+             #          #   The data and information in the dataset provided here are intended for use by persons possessing some technical skill and knowledge in epidemiology, surveillance or data management."),
+             #          # p("In order to use the HOTspots extracted datasets provided users must adhere to the following guidelines:"),
+             #          # p("•	consider whether a breach of confidentiality is likely due to a low cell count and make no use of the identity of any person discovered inadvertently;"),
+             #          # p("•	not to distribute or sell the datasets to any other individual, institution, or organization without the prior written consent of Menzies and HOTspots investigators."),
+             #          # p("The accuracy of the users' statistical analysis and the findings they report are not the responsibility of Menzies or HOTspots investigators. Menzies or HOTspots investigators shall not be held liable for improper or incorrect use of the data. 
+             #          #   In no event shall Menzies or HOTspots be liable for any incidental, indirect, consequential or special damages of any kind, or any damages whatsoever, including, without limitation, those resulting from loss of profit, loss of contracts, goodwill, or business relationships, arising out of or in connection with the use of the data. 
+             #          #   Menzies do not warrant that the files, the servers and the databases used for data storage, extraction, management and transmission are error, virus or bug free and the recipient accepts that it is its responsibility to make adequate provision for protection against such threats."),
+             #          # p("For more information, please see the", tags$a(href="https://www.menzies.edu.au/page/Policies/", "Menzies policy website"), ", including the", tags$a(href="https://www.menzies.edu.au/icms_docs/307159_Information_and_Privacy_Policy_-_2019.pdf", "Information and Privacy policy")),
+             #          # 
+             #          
+             #          ### Methods -------------------------------------------------------------------------------------------------------
+             #          
+             #          # Title
+             #          h3("Methodology"),
+             #          
+             #          # Text
+             #          p("Antibiotic susceptibility data have been contributed by four main pathology service providers across three jurisdictions in northern Australia. These are Territory Pathology (Northern Territory), Pathology Queensland, Western Diagnostics (Western Australia and Northern Territory) and PathWest (Western Australia)."),
+             #          p("Between pathology providers there were variations in the content and format of the supplied data, requiring a process of data cleaning and standardisation. This is in part due to the variation in antimicrobial susceptibility testing (AST) guidelines used (Northern Territory and Western Australia use CLSI while Queensland used CLSI to 30th  June 2012 and then moved to EUCAST), however it is also due to individual laboratory policies and processes and the availability of antimicrobial agents for testing."),
+             #          p("For example, Western Diagnostics, PathWest and Territory Pathology all use CLSI, which recommends agents that are important for routine testing against various organisms or organism groups (an antimicrobial panel), however other agents may be tested or reported selectively based on the institution's formulary or substituted with a more practical alternative where their activity is similar. Therefore, the number and type of antimicrobials tested against the same microbes varies between laboratories. The microbes reported also varied, however common pathogens were identified and these microbes are available to select from the dropdown menu."),
+             #          p("Data were harmonised across the three jurisdictions by standardising antimicrobial, microbe and sample type nomenclature. Regions within jurisdictions were based on classification by the Australian Bureau of Statistics, Statistical Area Level 3. The healthcare setting was determined by the type of facility at which the sample was collected. Duplicates were removed from the data by selecting the first isolate per person, per calendar year. The percentage of resistant isolates was calculated by dividing the number resistant by the total number of isolates tested. For years with <15 isolates collected and tested, these data (within the region of interest) were added to the following or previous year (or excluded if all 3 years had <15 isolates)."),
+             #          p("Territory Pathology provided minimum inhibitory concentrations, to which we applied the 2017 CLSI M100-S27 Performance Standards for AST (27th Edition). All other data were supplied as interpreted values: susceptible (including intermediate) and resistant. Data on age and sex was not available from Territory Pathology and PathWest, and PathWest data was only available by year."),
+             #          p(paste0("These methods were last updates on ", date_method_update, ".")),
+             #          br(),
+             #          
+             #          
+             #          
+             #          ### Explore the data ----------------------------------------------------------------------------------------------
+             #          
+             #          h3("Explore the data"),
+             #          
+             #          # Sidebar layout
+             #          sidebarLayout(
+             #            
+             #            # Sidebar panel for inputs on the left ********************************************************************************************************************
+             #            sidebarPanel(
+             #              
+             #              
+             #              # Select the location where the infection was identified
+             #              radioButtons(inputId = "onset_filt",
+             #                           label = "Select healthcare setting:",
+             #                           selected = "Overall",
+             #                           choices = rev(unique(hotspot_yearly_data$onset))), # change this when animal data is added rev(unique(hotspot_yearly_data$onset))
+             #              
+             #              # Select the isolate type
+             #              selectInput(inputId = "isolatetype_filt",
+             #                          label = "Select specimen type:",
+             #                          choices = sort(unique(hotspot_yearly_data$sample_type))), ## unique(hotspot_yearly_data$sample_type[hotspot_yearly_data$sample_oranism == "Human"])
+             #              
+             #              
+             #              # Select the microbe name
+             #              selectInput(inputId = "microbe_name_filt", 
+             #                          label = "Select organism:",
+             #                          choices = c("All", sort(unique(hotspot_yearly_data$organism))),
+             #                          selected = "All", # none selected as the default when the app opens
+             #                          multiple = FALSE), # cannot select multiple
+             #              
+             #              
+             #              # Select the anti-microbe
+             #              selectInput(inputId = "antibiotic_name_filt",
+             #                          label = "Select antibiotic:",
+             #                          choices = c("All",sort(unique(hotspot_yearly_data$antimicrobial))),
+             #                          selected = "All",
+             #                          multiple = FALSE),
+             #              
+             #              # Select the region
+             #              selectInput(inputId = "region_filt",
+             #                          label = "Select a region:",
+             #                          choices = regional_lists_andAll,
+             #                          selected = regional_lists_andAll[[1]][1],
+             #                          multiple = FALSE),
+             #              
+             #              br(),
+             #              
+             #              # A slider to select the year
+             #              # Alter the style so there in no tail behind
+             #              #tags$style(type = "text/css", ".irs-bar { background: none; border-top: none; border-bottom: none;}
+             #              #           .irs-bar-edge {background: none; border: none;}"), # setting the blue bar to be nothing on the slider
+             #              
+             #              # 
+             #              #                           radioButtons(inputId = "year_select_filt",
+             #              #                                        label = "Which years to display?",
+             #              #                                        selected = "All",
+             #              #                                        choices = c("All" = "All",
+             #              #                                                    "Single year" = "single")), # add in a range?
+             #              # 
+             #              # 
+             #              #                           conditionalPanel(  # conditional to display the year input only when the tab is antimicrobe
+             #              #                             condition = "input.year_select_filt == 'single'",
+             #              # 
+             #              #                             sliderInput(inputId = "year_filt",
+             #              #                                         label = "Select a year:",
+             #              #                                         value = max(hotspot_yearly_data$year), # default value
+             #              #                                         min = min(hotspot_yearly_data$year),
+             #              #                                         max = max(hotspot_yearly_data$year),
+             #              #                                         step = 1,
+             #              #                                         sep = "",
+             #              #                                         round = TRUE,
+             #              #                                         ticks = FALSE)
+             #              #                           ),
+             #              
+             #              
+             #              # Select multiple years
+             #              sliderInput(inputId = "year_filt",
+             #                          label = "Select year(s):",
+             #                          value = c(max(hotspot_yearly_data$year)-5, max(hotspot_yearly_data$year)), # default value
+             #                          min = min(hotspot_yearly_data$year),
+             #                          max = max(hotspot_yearly_data$year),
+             #                          step = 1,
+             #                          sep = "",
+             #                          round = TRUE,
+             #                          ticks = FALSE),
+             #              
+             #              
+             #              
+             #              # Select which data (yearly or monthly) to display
+             #              checkboxGroupInput(inputId = "data_investigate", label ="Timeframe:",
+             #                                 choices = c("Yearly data" = "yearly",
+             #                                             "Monthly data" = "monthly"),
+             #                                 selected = "yearly"),
+             #              br(),
+             #              
+             #              # Title
+             #              h4("Download the data"),
+             #              
+             #              # Download buttons
+             #              downloadButton(outputId = "downloadData_yearly", label = "Full dataset"),
+             #              downloadButton(outputId = "downloadData_yearly_selected", label = "Selected")
+             #              
+             #              
+             #            ), # close the side bar
+             #            
+             #            
+             #            # Main panel for displaying outputs ********************************************************************************************************************
+             #            mainPanel(
+             #              
+             #              # When the show yearly data checkbox is selected
+             #              conditionalPanel(
+             #                condition = "input.data_investigate.indexOf('yearly') > -1", # yearly is selected in the checkboxes called data_investigate
+             #                
+             #                # Title
+             #                h4("Yearly data"),
+             #                
+             #                # Table
+             #                DT::dataTableOutput("table_data_year"),
+             #                br(),
+             #                br()
+             #                
+             #              ),
+             #              
+             #              # When the show yearly data checkbox is selected
+             #              conditionalPanel(
+             #                condition = "input.data_investigate.indexOf('monthly') > -1", # monthly is selected in the checkboxes called data_investigate
+             #                
+             #                # Title
+             #                h4("Monthly data"),
+             #                
+             #                # Table
+             #                DT::dataTableOutput("table_data_month"),
+             #                br(),
+             #                br()
+             #              ) # close conditional panel
+             #            )# close main panel
+             #          ), # close side bar layout
+             #          
+             #          br(),
+             #          br(),
+             #          
+             #          
+             #          ### Terms of Use -------------------------------------------------------------------------------------------------------
+             #          
+             #          # # Title
+             #          # h3("Terms of use"),
+             #          # 
+             #          # # Text
+             #          # p("Users must read and adhere to the terms of the HOTspots Data Disclaimer. Users must not use the datasets in any way which is inconsistent with the Privacy Act 1988 (Cth), the Information Act 2002 (NT), the HOTSpots Data Disclaimer or the HOTspots Terms of Use."),
+             #          # p("The data and information in the dataset downloaded are intended for use by persons possessing technical skill and knowledge in epidemiology, surveillance and data management. Commercial use of the HOTspots data is not permitted without prior written consent from Menzies."),
+             #          # p("Except where otherwise stated, downloading and reproduction of published (in paper or electronically) HOTspots data for personal use or for further non-commercial dissemination, are authorised provided appropriate acknowledgement is given to HOTspots investigators as the source. Any publication arising from the dataset provided should credit Menzies and HOTspots investigators in the relevant parts of the publication. Please contact the lead investigator Teresa.wozniak@menzies.edu.au to discuss further."), # TO DO ## add link to the email
+             #          # 
+             #          # br(),   
+             #          
+             #          # Citation
+             #          #p(how_to_cite),
+             #          
+             #          # Logos
+             #          show_logos
+             #          
+             # ), # close tab panel
              
              
              
@@ -1037,16 +1036,16 @@ ui <- fluidPage(
              tabPanel("Economic Burden", icon = icon("calculator"),
                       
                       # warning at top
-                      span(h3("This page is in development"), style="color:red"),
+                      span(h3("This page is in development"), style = "color:red"),
                       br(),
                       
                       # Title
                       h3("ResImpact"),
                       
                       # Description
-                      p(tags$a(href="https://aushsi.shinyapps.io/costresistantecoli/", "ResImpact"), ", is an open-access tool based on a validated and transparent model developed as part of the ", tags$a(href="http://www.cre-rhai.org.au/projects/health-economic-modelling-of-antimicrobial-resistance-in-australia---hemaa", "Health and Economic Modelling of Antimicrobial resistance in Australia (HEMAA) project.")),
+                      p(tags$a(href = "https://aushsi.shinyapps.io/costresistantecoli/", "ResImpact"), ", is an open-access tool based on a validated and transparent model developed as part of the ", tags$a(href = "http://www.cre-rhai.org.au/projects/health-economic-modelling-of-antimicrobial-resistance-in-australia---hemaa", "Health and Economic Modelling of Antimicrobial resistance in Australia (HEMAA) project.")),
                       p("ResImpact was created by Dr Teresa Wozniak and Prof Adrian Barnett using data from Queenland before 2018."),
-                      span(p("This page does not use the HOTspots data."), style="color:red"),
+                      span(p("This page does not use the HOTspots data."), style = "color:red"),
                       
                       br(),
                       
@@ -1180,8 +1179,8 @@ ui <- fluidPage(
                                  # 
                                  
                                  #note, to see the pdf you must be in the browser
-                                 tags$iframe(style="height:600px; width:100%; scrolling=yes",
-                                             src="EvaluationReport_Goddard_WebsiteUpload.pdf")
+                                 tags$iframe(style = "height:600px; width:100%; scrolling=yes",
+                                             src = "EvaluationReport_Goddard_WebsiteUpload.pdf")
                                  
                         )
                         #, # close tab panel
@@ -1205,72 +1204,72 @@ ui <- fluidPage(
                         
              ), # close navbar drop down menu
              
-             # Tab 7 - About us ----------------------------------------------------------------
-             
-             tabPanel("About Us",
-                      icon = icon("user-circle"),
-                      
-                      # Title
-                      h1("Meet the team"),
-                      br(),
-                      
-                      # to create columns
-                      fluidRow( 
-                        
-                        ## To add a new person, follow this format with the line uncommented
-                        # column(4, img(src='about_us/NAME.png', align = "center", width = 'auto', height = '200px'),
-                        #        p("Title Name, Role"),
-                        #        p("optional contact details"),
-                        #        p("Title Name blurb")),
-                        # 
-                        column(4, img(src = 'Teresa.png', align = "center", width = 'auto', height = '250px'),
-                               p("Dr Teresa Wozniak, Program lead"),
-                               # p("Dr Teresa Wozniak is an APPRISE Research Fellow and a Research Fellow at the Menzies School of Health Research. Her research interests are in surveillance systems to inform infection prevention and control efforts and support the development of local and national treatment guidelines in northern Australia."),
-                               p("teresa.wozniak@menzies.edu.au")),
-                        
-                        column(4, img(src = 'Will.png', align = "centre", width = 'auto', height = '250px'),
-                               p("Will Cuningham, Data manager and PhD candidate")
-                               # p("Will is a final-year PhD candidate at the Menzies School of Health Research in Darwin. His research focuses on the burden of bacterial infections in northern Australia, including estimates of the incidence and cost of antibiotic-susceptible and antibiotic-resistant infections in Northern Territory hospitals. Prior to commencing his PhD at Menzies, Will completed his Masters in Epidemiology at the University of Melbourne and worked as a research assistant at The Peter Doherty Institute of Infection and Immunity.")
-                        ), 
-                        column(4, img(src = 'Alys.png', align = "centre", width = 'auto', height = '250px'),
-                               p("Alys Young, Research assistant and PhD candidate")
-                        ), 
-                      ), # close fluid row
-                      
-                      br(),
-                      br(),
-                      
-                      h3("Collaborators"),
-                      fluidRow( 
-                        column(4, img(src = 'UniMelb.png', align = "center", width = 'auto', height = '250px')
-                        ),
-                        
-                        column(4, img(src = 'Nick.png', align = "centre", width = 'auto', height = '250px'),
-                               p("Prof Nick Golding"),
-                               p("The University of Melbourne, Curtin University, Telethon Kids Institute")
-                        ), 
-                        column(4, img(src = 'Saras.png', align = "centre", width = 'auto', height = '250px'),
-                               p("Dr Saras Windecker"),
-                               p("The University of Melbourne")
-                        )
-                      ),
-                      br(),
-                      br(),
-                      
-                      # Title
-                      h3("Contact the HOTspots team"),
-                      p("For general information regarding the data, use of the HOTspots tool and suggestions of further aspects to implement,"),
-                      p("please contact Teresa Wozniak from the Menzie's School of Health Research on teresa.wozniak@menzies.edu.au"),
-                      p("For specific questions regarding the website or to report an issue,"),
-                      p(paste("please email", contact_email)),
-                      br(),
-                      br(),
-                      
-                      # Logos
-                      h3("Funding"),
-                      p("The HOTspots platform was developed by the Improving Health Outcomes in the Tropical North (HOT North) program. The HOT North program is supported by the Australian National Health and Medical Research Council (grant number 1131932)."),
-                      show_logos
-             ), # close tab panel
+             # # Tab 7 - About us ----------------------------------------------------------------
+             # 
+             # tabPanel("About Us",
+             #          icon = icon("user-circle"),
+             #          
+             #          # Title
+             #          h1("Meet the team"),
+             #          br(),
+             #          
+             #          # to create columns
+             #          fluidRow( 
+             #            
+             #            ## To add a new person, follow this format with the line uncommented
+             #            # column(4, img(src='about_us/NAME.png', align = "center", width = 'auto', height = '200px'),
+             #            #        p("Title Name, Role"),
+             #            #        p("optional contact details"),
+             #            #        p("Title Name blurb")),
+             #            # 
+             #            column(4, img(src = 'Teresa.png', align = "center", width = 'auto', height = '250px'),
+             #                   p("Dr Teresa Wozniak, Program lead"),
+             #                   # p("Dr Teresa Wozniak is an APPRISE Research Fellow and a Research Fellow at the Menzies School of Health Research. Her research interests are in surveillance systems to inform infection prevention and control efforts and support the development of local and national treatment guidelines in northern Australia."),
+             #                   p("teresa.wozniak@menzies.edu.au")),
+             #            
+             #            column(4, img(src = 'Will.png', align = "centre", width = 'auto', height = '250px'),
+             #                   p("Will Cuningham, Data manager and PhD candidate")
+             #                   # p("Will is a final-year PhD candidate at the Menzies School of Health Research in Darwin. His research focuses on the burden of bacterial infections in northern Australia, including estimates of the incidence and cost of antibiotic-susceptible and antibiotic-resistant infections in Northern Territory hospitals. Prior to commencing his PhD at Menzies, Will completed his Masters in Epidemiology at the University of Melbourne and worked as a research assistant at The Peter Doherty Institute of Infection and Immunity.")
+             #            ), 
+             #            column(4, img(src = 'Alys.png', align = "centre", width = 'auto', height = '250px'),
+             #                   p("Alys Young, Research assistant and PhD candidate")
+             #            ), 
+             #          ), # close fluid row
+             #          
+             #          br(),
+             #          br(),
+             #          
+             #          h3("Collaborators"),
+             #          fluidRow( 
+             #            column(4, img(src = 'UniMelb.png', align = "center", width = 'auto', height = '250px')
+             #            ),
+             #            
+             #            column(4, img(src = 'Nick.png', align = "centre", width = 'auto', height = '250px'),
+             #                   p("Prof Nick Golding"),
+             #                   p("The University of Melbourne, Curtin University, Telethon Kids Institute")
+             #            ), 
+             #            column(4, img(src = 'Saras.png', align = "centre", width = 'auto', height = '250px'),
+             #                   p("Dr Saras Windecker"),
+             #                   p("The University of Melbourne")
+             #            )
+             #          ),
+             #          br(),
+             #          br(),
+             #          
+             #          # Title
+             #          h3("Contact the HOTspots team"),
+             #          p("For general information regarding the data, use of the HOTspots tool and suggestions of further aspects to implement,"),
+             #          p("please contact Teresa Wozniak from the Menzie's School of Health Research on teresa.wozniak@menzies.edu.au"),
+             #          p("For specific questions regarding the website or to report an issue,"),
+             #          p(paste("please email", contact_email)),
+             #          br(),
+             #          br(),
+             #          
+             #          # Logos
+             #          h3("Funding"),
+             #          p("The HOTspots platform was developed by the Improving Health Outcomes in the Tropical North (HOT North) program. The HOT North program is supported by the Australian National Health and Medical Research Council (grant number 1131932)."),
+             #          show_logos
+             # ), # close tab panel
              
              
              ## Tab 8 - Share  ----------------------------------------------------------------
