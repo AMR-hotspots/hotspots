@@ -26,6 +26,18 @@ hotspot_monthly_data$date_dmy <- as.Date(hotspot_monthly_data$date_dmy)
 # Need to add more colours to the colour palette in the 4_aesthetics.R file
 
 
+###  Data cleaning as informed by experts----------------------------------------------------------------------------------------------------------------------------
+
+# Read in the data
+hotspot_monthly_data <- cleanData_byExpertKnowledge(hotspot_monthly_data)
+hotspot_yearly_data <- cleanData_byExpertKnowledge(hotspot_yearly_data)
+hotspot_yearly_splitage <- cleanData_byExpertKnowledge(hotspot_yearly_splitage)
+hotspot_yearly_splitsex <- cleanData_byExpertKnowledge(hotspot_yearly_splitsex)
+
+hotspot_monthly_data$date_dmy <- as.Date(hotspot_monthly_data$date_dmy)
+
+
+
 ### Locations -------------------------------------------------------------------------------------------------------
 
 # Shapefile map of Austalia

@@ -11,6 +11,32 @@
 # code > insert roxygen skeleton
 
 
+## 0. set up
+# `%notin%` <- Negate(`%in%`)
+
+
+
+
+cleanData_byExpertKnowledge <- function(hs_data){
+  data <- hs_data
+  
+  ## 1. When Specimen type = blood,
+  #   *Antibiotic: can't have norfloxacin in the list for a blood isolate – not adequate systemic concentrations*
+  data <- data[!(data$sample_type == "Blood" & data$antimicrobial == "Norfloxacin"),]
+  
+  ## 2. when: Organism == A. baumannii (and all specimen types)
+  #           remove the antibiotics = ampicillin, amox-clav, cefazolin, ceftriaxone, and pip-taz*
+  data <- data[!(data$organism == "A. baumannii" & data$antimicrobial %in% c("Ampicillin", "Amoxicillin-clavulanate", "Cefazolin", "Ceftriaxone", "Piperacillin-tazobactam")),]
+  
+  ## 3. when: Organism == P. aeruginosa (and all specimen types)
+  #           remove the antibiotics = amoxi-clav, cefazolin, ampicillin, trimpethoprim, trimethoprim sulfamethoxazole
+  
+  data <- data[!(data$organism == "P. aeruginosa" & data$antimicrobial %in% c("Ampicillin", "Amoxicillin-clavulanate", "Cefazolin", "Trimethoprim", "Trimethoprim-sulfamethoxazole")),]
+  
+  return(data)
+}
+
+
 
 #' Change plain text/url for the social media share message
 #'
