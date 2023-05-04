@@ -13,3 +13,4 @@ rsconnect/
 www/data_clean/
 # DS store files
 www/.DS_Store
+.DS_Store
