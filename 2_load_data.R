@@ -11,9 +11,9 @@
 ### Resistance Data ----------------------------------------------------------------------------------------------------------------------------
 
 # Read in the data
-hotspot_monthly_data <- read.csv("www/data_clean/HOTspots_monthly.csv")
-hotspot_yearly_data <- read.csv("www/data_clean/HOTspots_yearly.csv")
-#hotspot_yearly_split <- read.csv("www/data_clean/HOTspots_yearly_age&sex.csv")
+hotspot_monthly_data    <- read.csv("www/data_clean/HOTspots_monthly.csv")
+hotspot_yearly_data     <- read.csv("www/data_clean/HOTspots_yearly.csv")
+#hotspot_yearly_split   <- read.csv("www/data_clean/HOTspots_yearly_age&sex.csv")
 hotspot_yearly_splitage <- read.csv("www/data_clean/HOTspots_yearly_age.csv")
 hotspot_yearly_splitsex <- read.csv("www/data_clean/HOTspots_yearly_sex.csv")
 
@@ -29,10 +29,10 @@ hotspot_monthly_data$date_dmy <- as.Date(hotspot_monthly_data$date_dmy)
 ###  Data cleaning as informed by experts----------------------------------------------------------------------------------------------------------------------------
 
 # Read in the data
-hotspot_monthly_data <- cleanData_byExpertKnowledge(hotspot_monthly_data)
-hotspot_yearly_data <- cleanData_byExpertKnowledge(hotspot_yearly_data)
-hotspot_yearly_splitage <- cleanData_byExpertKnowledge(hotspot_yearly_splitage)
-hotspot_yearly_splitsex <- cleanData_byExpertKnowledge(hotspot_yearly_splitsex)
+hotspot_monthly_data    <- cleanData_byExpertKnowledge(hotspot_monthly_data)    %>% filter(organism != "S. pyogenes")
+hotspot_yearly_data     <- cleanData_byExpertKnowledge(hotspot_yearly_data)     %>% filter(organism != "S. pyogenes")
+hotspot_yearly_splitage <- cleanData_byExpertKnowledge(hotspot_yearly_splitage) %>% filter(organism != "S. pyogenes")
+hotspot_yearly_splitsex <- cleanData_byExpertKnowledge(hotspot_yearly_splitsex) %>% filter(organism != "S. pyogenes")
 
 hotspot_monthly_data$date_dmy <- as.Date(hotspot_monthly_data$date_dmy)
 
