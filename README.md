@@ -1,8 +1,9 @@
 # Welcome to HOTSpots: A tool for tracking antimicrobial resistance
 
-This project is a collaboration between the Menzies School of Health Research and the University of Melbourne.
+This project is owned and run by CSIRO. The pilot program was a collaboration between the Menzies School of Health Research and the University of Melbourne.  
+
 The aim is to help track the change in antimicrobial resistance (AMR) over space and time. We provide various visualisations of the resistance data to help practitioners and decision-makers in their management. At the time of its launch (July 2021), the data is largely from the Top End of Australia.
-For more information, please contact either the hotspots team at HOTspots@menzies.edu.au or Teresa Wozniak, Program Lead on teresa.wozniak@menzies.edu.au . 
+For more information, please contact either Teresa Wozniak, Program Lead on teresa.wozniak@csiro.au or Alys Young, the developer alys.young@csiro.au. 
 
 ## Data and Methodology
 Antibiotic susceptibility data have been contributed by four main pathology service providers across three jurisdictions in northern Australia. These are Territory Pathology (Northern Territory), Pathology Queensland, Western Diagnostics (Western Australia and Northern Territory) and PathWest (Western Australia).  
@@ -33,8 +34,8 @@ For more information, please see the Menzies policy website https://www.menzies.
 
 ## Terms of Use
 Users must read and adhere to the terms of the HOTspots Data Disclaimer. Users must not use the datasets in any way which is inconsistent with the Privacy Act 1988 (Cth), the Information Act 2002 (NT), the HOTSpots Data Disclaimer or the HOTspots Terms of Use.
-The data and information in the dataset downloaded are intended for use by persons possessing technical skill and knowledge in epidemiology, surveillance and data management. Commercial use of the HOTspots data is not permitted without prior written consent from Menzies.  
+The data and information in the dataset downloaded are intended for use by persons possessing technical skill and knowledge in epidemiology, surveillance and data management. Commercial use of the HOTspots data is not permitted without prior written consent. Contact Teresa Wozniak Teresa.wozniak@csiro.au .  
 
-Except where otherwise stated, downloading and reproduction of published (in paper or electronically) HOTspots data for personal use or for further non-commercial dissemination, are authorised provided appropriate acknowledgement is given to HOTspots investigators as the source. Any publication arising from the dataset provided should credit Menzies and HOTspots investigators in the relevant parts of the publication. Please contact the lead investigator Teresa.wozniak@menzies.edu.au to discuss further.  
+Except where otherwise stated, downloading and reproduction of published (in paper or electronically) HOTspots data for personal use or for further non-commercial dissemination, are authorised provided appropriate acknowledgement is given to HOTspots investigators as the source. Any publication arising from the dataset provided should credit Menzies and HOTspots investigators in the relevant parts of the publication. Please contact the lead investigator Teresa.wozniak@csiro.au to discuss further.  
 
                       
